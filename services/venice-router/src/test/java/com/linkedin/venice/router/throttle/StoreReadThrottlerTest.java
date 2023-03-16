@@ -135,7 +135,7 @@ public class StoreReadThrottlerTest {
 
     throttler.clearStorageNodesThrottlers();
     try {
-      throttler.mayThrottleRead(100, Optional.of(Utils.getHelixNodeIdentifier(Utils.getHostName(), 10000)));
+      throttler.mayThrottleRead(100, Utils.getHelixNodeIdentifier(Utils.getHostName(), 10000));
     } catch (QuotaExceededException e) {
       Assert.fail("Throttler for storage node has been cleared, this store still have quota to accept this request.");
     }
