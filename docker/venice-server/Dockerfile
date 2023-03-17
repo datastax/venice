@@ -9,6 +9,7 @@ RUN mkdir -p ${VENICE_DIR}/bin && mkdir -p ${VENICE_DIR}/configs && mkdir -p ${V
 WORKDIR ${VENICE_DIR}
 
 COPY venice-server-all.jar bin/venice-server-all.jar
+COPY *py bin/
 COPY single-dc-configs configs/single-dc
 COPY multi-dc-configs configs/multi-dc
 

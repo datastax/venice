@@ -2,9 +2,12 @@ cd ../
 ./gradlew shadowJar
 cd docker
 
-repository=venicedb
-repository=eolivellidatastax
-oss_release=0.4.17-2
+repository="${1:-venicedb}"
+oss_release="${2:-0.4.17}"
+
+set -x
+echo "Building docker images for repository $repository, version $oss_release"
+
 head_hash=$(git rev-parse --short HEAD)
 version=$oss_release
 
@@ -32,3 +35,7 @@ rm -f venice-server/venice-server-all.jar
 rm -f venice-controller/venice-controller-all.jar
 rm -f venice-router/venice-router-all.jar
 rm */*.py
+
+for target in ${targets[@]}; do
+   docker push $repository/$target:$version
+done

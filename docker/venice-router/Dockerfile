@@ -9,6 +9,7 @@ RUN mkdir -p ${VENICE_DIR}/bin && mkdir -p ${VENICE_DIR}/configs
 WORKDIR ${VENICE_DIR}
 
 COPY venice-router-all.jar bin/venice-router-all.jar
+COPY *py bin/
 COPY single-dc-configs configs/single-dc
 COPY multi-dc-configs configs/multi-dc
 

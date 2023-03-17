@@ -30,6 +30,16 @@
 #
 # Environment variables not prefixed will be used only to
 # update if they exist and ignored if they don't.
+#
+# Venice uses variables with dot notation, but k8s and bash
+# don't play well with dots, so the script replaces underscores with dots.
+
+# For instance:
+# listener.port=7777
+# 
+# This is mapped to
+# prefix_listener_port=7777
+#
 ############################################################
 
 import os
