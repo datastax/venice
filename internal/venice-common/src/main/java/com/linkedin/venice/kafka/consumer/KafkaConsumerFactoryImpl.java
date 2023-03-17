@@ -33,7 +33,7 @@ public class KafkaConsumerFactoryImpl extends KafkaClientFactory {
     } catch (UndefinedPropertyException e) {
       LOGGER.warn("SSL properties are missing, Kafka consumer will not be able to consume if SSL is required.");
     }
-    // SASL properties are read from the properties variable
+    LOGGER.info("Kafka consumer properties: {}", properties);
     return properties;
   }
 

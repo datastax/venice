@@ -69,6 +69,7 @@ public class ApacheKafkaProducerConfig {
     } else {
       LOGGER.info("Will initialize a non-SSL Kafka producer");
     }
+    LOGGER.info("Kafka producer properties: {}", this.producerProperties);
   }
 
   public Properties getProducerProperties() {
