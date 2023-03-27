@@ -126,6 +126,7 @@ public enum Arg {
   AUTO_SCHEMA_REGISTER_FOR_PUSHJOB_ENABLED(
       "auto-schema-register-push-job-enabled", "asp", true, "whether or not to use auto-schema register for pushjob"
   ),
+  LATEST_SUPERSET_SCHEMA_ID("latest-superset-schema-id", "lssi", true, "the latest superset schema id for this store"),
   REGULAR_VERSION_ETL_ENABLED(
       "regular-version-etl-enabled", "rve", true, "whether or not to enable regular version etl for this store."
   ),
@@ -225,6 +226,7 @@ public enum Arg {
   RECOVERY_COMMAND("recovery-command", "rco", true, "command to execute the data recovery"),
   EXTRA_COMMAND_ARGS("extra-command-args", "eca", true, "extra command arguments"),
   ENABLE_DISABLED_REPLICA("enable-disabled-replicas", "edr", true, "Reenable disabled replicas"),
+  NON_INTERACTIVE("non-interactive", "nita", false, "non-interactive mode"),
   DEBUG("debug", "d", false, "Print debugging messages for execute-data-recovery");
 
   private final String argName;
