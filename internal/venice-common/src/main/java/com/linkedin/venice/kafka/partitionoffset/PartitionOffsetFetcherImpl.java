@@ -8,6 +8,7 @@ import com.linkedin.venice.kafka.VeniceOperationAgainstKafkaTimedOut;
 import com.linkedin.venice.kafka.admin.KafkaAdminWrapper;
 import com.linkedin.venice.kafka.protocol.KafkaMessageEnvelope;
 import com.linkedin.venice.message.KafkaKey;
+import com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdapter;
 import com.linkedin.venice.utils.RetryUtils;
 import com.linkedin.venice.utils.lazy.Lazy;
 import com.linkedin.venice.utils.locks.AutoCloseableLock;
@@ -74,6 +75,7 @@ public class PartitionOffsetFetcherImpl implements PartitionOffsetFetcher {
 
   @Override
   public Int2LongMap getTopicLatestOffsets(String topic) {
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     try (AutoCloseableLock ignore = AutoCloseableLock.of(rawConsumerLock)) {
       List<PartitionInfo> partitionInfoList = kafkaRawBytesConsumer.get().partitionsFor(topic);
       if (partitionInfoList == null || partitionInfoList.isEmpty()) {
@@ -96,6 +98,7 @@ public class PartitionOffsetFetcherImpl implements PartitionOffsetFetcher {
   }
 
   private long getLatestOffset(String topic, int partition) throws TopicDoesNotExistException {
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     if (partition < 0) {
       throw new IllegalArgumentException("Cannot retrieve latest offsets for invalid partition " + partition);
     }
@@ -130,6 +133,7 @@ public class PartitionOffsetFetcherImpl implements PartitionOffsetFetcher {
 
   @Override
   public long getPartitionLatestOffsetAndRetry(String topic, int partition, int retries) {
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     if (retries < 1) {
       throw new IllegalArgumentException("Invalid retries. Got: " + retries);
     }
@@ -204,9 +208,13 @@ public class PartitionOffsetFetcherImpl implements PartitionOffsetFetcher {
 
   private Map<TopicPartition, OffsetAndTimestamp> offsetsForTimesWithRetry(
       Map<TopicPartition, Long> timestampsToSearch) {
+    Map<TopicPartition, Long> timestampsToSearch2 =
+        timestampsToSearch.entrySet().stream().collect(Collectors.toMap(partitionToOffset -> {
+          return ApacheKafkaProducerAdapter.mapToPulsar(partitionToOffset.getKey());
+        }, partitionToOffset -> partitionToOffset.getValue()));
     try (AutoCloseableLock ignore = AutoCloseableLock.of(rawConsumerLock)) {
       return RetryUtils.executeWithMaxAttemptAndExponentialBackoff(
-          () -> kafkaRawBytesConsumer.get().offsetsForTimes(timestampsToSearch, kafkaOperationTimeout),
+          () -> kafkaRawBytesConsumer.get().offsetsForTimes(timestampsToSearch2, kafkaOperationTimeout),
           25,
           Duration.ofMillis(100),
           Duration.ofSeconds(5),
@@ -216,9 +224,11 @@ public class PartitionOffsetFetcherImpl implements PartitionOffsetFetcher {
   }
 
   private Map<TopicPartition, Long> endOffsetsWithRetry(Collection<TopicPartition> partitions) {
+    Collection<TopicPartition> partitions2 =
+        partitions.stream().map(ApacheKafkaProducerAdapter::mapToPulsar).collect(Collectors.toList());
     try (AutoCloseableLock ignore = AutoCloseableLock.of(rawConsumerLock)) {
       return RetryUtils.executeWithMaxAttemptAndExponentialBackoff(
-          () -> kafkaRawBytesConsumer.get().endOffsets(partitions),
+          () -> kafkaRawBytesConsumer.get().endOffsets(partitions2),
           25,
           Duration.ofMillis(100),
           Duration.ofSeconds(5),
@@ -229,6 +239,7 @@ public class PartitionOffsetFetcherImpl implements PartitionOffsetFetcher {
 
   @Override
   public long getProducerTimestampOfLastDataRecord(String topic, int partition, int retries) {
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     if (retries < 1) {
       throw new IllegalArgumentException("Invalid retries. Got: " + retries);
     }
@@ -338,9 +349,10 @@ public class PartitionOffsetFetcherImpl implements PartitionOffsetFetcher {
    *      of consumer records each time and the batch size is arbitrary.
    */
   private List<ConsumerRecord<KafkaKey, KafkaMessageEnvelope>> consumeLatestRecords(
-      final String topic,
+      String topic,
       final int partition,
       final int lastRecordsCount) {
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     if (partition < 0) {
       throw new IllegalArgumentException(
           "Cannot retrieve latest producer timestamp for invalid partition " + partition + " topic " + topic);
@@ -437,6 +449,7 @@ public class PartitionOffsetFetcherImpl implements PartitionOffsetFetcher {
 
   @Override
   public List<PartitionInfo> partitionsFor(String topic) {
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     try (AutoCloseableLock ignore = AutoCloseableLock.of(rawConsumerLock)) {
       return kafkaRawBytesConsumer.get().partitionsFor(topic);
     }
@@ -445,6 +458,7 @@ public class PartitionOffsetFetcherImpl implements PartitionOffsetFetcher {
   @Override
   public long getOffsetByTimeIfOutOfRange(TopicPartition topicPartition, long timestamp)
       throws TopicDoesNotExistException {
+    topicPartition = ApacheKafkaProducerAdapter.mapToPulsar(topicPartition);
     try (AutoCloseableLock ignore = AutoCloseableLock.of(rawConsumerLock)) {
       long latestOffset = getLatestOffset(topicPartition.topic(), topicPartition.partition());
       if (latestOffset <= 0) {
@@ -547,6 +561,7 @@ public class PartitionOffsetFetcherImpl implements PartitionOffsetFetcher {
    * @return the beginning offset of a topic/partition. Synchronized because it calls #getConsumer()
    */
   private long getEarliestOffset(String topic, int partition) throws TopicDoesNotExistException {
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     try (AutoCloseableLock ignore = AutoCloseableLock.of(rawConsumerLock)) {
       if (!kafkaAdminWrapper.get().containsTopicWithExpectationAndRetry(topic, 3, true)) {
         throw new TopicDoesNotExistException("Topic " + topic + " does not exist!");

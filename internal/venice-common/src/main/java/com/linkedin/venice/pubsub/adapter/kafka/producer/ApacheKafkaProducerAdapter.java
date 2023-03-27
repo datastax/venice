@@ -20,6 +20,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -32,6 +33,18 @@ public class ApacheKafkaProducerAdapter implements PubSubProducerAdapter {
 
   private KafkaProducer<KafkaKey, KafkaMessageEnvelope> producer;
   private final ApacheKafkaProducerConfig producerConfig;
+
+  public static final String mapToPulsar(String topic) {
+    return topic.replace(".", "/");
+  }
+
+  public static final TopicPartition mapFromPulsar(TopicPartition topicPartition) {
+    return new TopicPartition(topicPartition.topic().replace("/", "."), topicPartition.partition());
+  }
+
+  public static final TopicPartition mapToPulsar(TopicPartition topicPartition) {
+    return new TopicPartition(mapToPulsar(topicPartition.topic()), topicPartition.partition());
+  }
 
   /**
    * @param producerConfig contains producer configs
@@ -58,6 +71,7 @@ public class ApacheKafkaProducerAdapter implements PubSubProducerAdapter {
   @Deprecated
   public int getNumberOfPartitions(String topic) {
     ensureProducerIsNotClosed();
+    topic = mapToPulsar(topic);
     // TODO: This blocks forever. Using getNumberOfPartitions with timeout parameter adds a timeout to this call but
     // other usages need to be refactored to handle the timeout exception correctly
     return producer.partitionsFor(topic).size();
@@ -78,6 +92,7 @@ public class ApacheKafkaProducerAdapter implements PubSubProducerAdapter {
       KafkaMessageEnvelope value,
       PubSubMessageHeaders pubsubMessageHeaders,
       PubSubProducerCallback pubsubProducerCallback) {
+    topic = mapToPulsar(topic);
     ensureProducerIsNotClosed();
     ProducerRecord<KafkaKey, KafkaMessageEnvelope> record = new ProducerRecord<>(
         topic,

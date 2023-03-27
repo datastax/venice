@@ -6,6 +6,7 @@ import static com.linkedin.venice.utils.Time.MS_PER_SECOND;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.kafka.TopicDoesNotExistException;
 import com.linkedin.venice.kafka.TopicManager;
+import com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdapter;
 import com.linkedin.venice.utils.Utils;
 import java.io.IOException;
 import java.time.Duration;
@@ -60,6 +61,7 @@ public class KafkaAdminClient implements KafkaAdminWrapper {
     if (replication > Short.MAX_VALUE) {
       throw new IllegalArgumentException("Replication factor cannot be > " + Short.MAX_VALUE);
     }
+    topicName = ApacheKafkaProducerAdapter.mapToPulsar(topicName);
     Map<String, String> topicPropertiesMap = new HashMap<>();
     topicProperties.stringPropertyNames().forEach(key -> topicPropertiesMap.put(key, topicProperties.getProperty(key)));
     Collection<NewTopic> newTopics =
@@ -93,11 +95,13 @@ public class KafkaAdminClient implements KafkaAdminWrapper {
   // catch/extract any expected exceptions such as UnknownTopicOrPartitionException.
   @Override
   public KafkaFuture<Void> deleteTopic(String topicName) {
+    topicName = ApacheKafkaProducerAdapter.mapToPulsar(topicName);
     return getKafkaAdminClient().deleteTopics(Collections.singleton(topicName)).values().get(topicName);
   }
 
   @Override
   public void setTopicConfig(String topicName, Properties topicProperties) throws TopicDoesNotExistException {
+    topicName = ApacheKafkaProducerAdapter.mapToPulsar(topicName);
     Collection<ConfigEntry> entries = new ArrayList<>(topicProperties.stringPropertyNames().size());
     topicProperties.stringPropertyNames()
         .forEach(key -> entries.add(new ConfigEntry(key, topicProperties.getProperty(key))));
@@ -128,6 +132,7 @@ public class KafkaAdminClient implements KafkaAdminWrapper {
 
   @Override
   public Properties getTopicConfig(String topicName) throws TopicDoesNotExistException {
+    topicName = ApacheKafkaProducerAdapter.mapToPulsar(topicName);
     ConfigResource resource = new ConfigResource(ConfigResource.Type.TOPIC, topicName);
     Collection<ConfigResource> configResources = Collections.singleton(resource);
     DescribeConfigsResult result = getKafkaAdminClient().describeConfigs(configResources);
@@ -167,6 +172,7 @@ public class KafkaAdminClient implements KafkaAdminWrapper {
   @Override
   public boolean containsTopic(String topic) {
     try {
+      topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
       Collection<String> topicNames = Collections.singleton(topic);
       TopicDescription topicDescription = getKafkaAdminClient().describeTopics(topicNames).values().get(topic).get();
 
@@ -193,6 +199,7 @@ public class KafkaAdminClient implements KafkaAdminWrapper {
   @Override
   public boolean containsTopicWithPartitionCheck(String topic, int partitionID) {
     try {
+      topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
       Collection<String> topicNames = Collections.singleton(topic);
       TopicDescription topicDescription = getKafkaAdminClient().describeTopics(topicNames).values().get(topic).get();
 
@@ -225,6 +232,7 @@ public class KafkaAdminClient implements KafkaAdminWrapper {
 
   @Override
   public Map<String, Properties> getSomeTopicConfigs(Set<String> topicNames) {
+    topicNames = topicNames.stream().map(ApacheKafkaProducerAdapter::mapToPulsar).collect(Collectors.toSet());
     return getSomethingForSomeTopics(topicNames, config -> marshallProperties(config), "configs");
   }
 
@@ -245,6 +253,7 @@ public class KafkaAdminClient implements KafkaAdminWrapper {
 
   @Override
   public Map<String, KafkaFuture<TopicDescription>> describeTopics(Collection<String> topicNames) {
+    topicNames = topicNames.stream().map(ApacheKafkaProducerAdapter::mapToPulsar).collect(Collectors.toSet());
     return kafkaAdminClient.describeTopics(topicNames).values();
   }
 
@@ -289,6 +298,7 @@ public class KafkaAdminClient implements KafkaAdminWrapper {
       String content) {
     Map<String, T> topicToSomething = new HashMap<>();
     try {
+      topicNames = topicNames.stream().map(ApacheKafkaProducerAdapter::mapToPulsar).collect(Collectors.toSet());
       // Step 1: Marshall topic names into config resources
       Collection<ConfigResource> configResources = topicNames.stream()
           .map(topicName -> new ConfigResource(ConfigResource.Type.TOPIC, topicName))
