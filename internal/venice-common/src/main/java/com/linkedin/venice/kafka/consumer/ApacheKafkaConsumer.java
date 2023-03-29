@@ -6,6 +6,7 @@ import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.kafka.protocol.KafkaMessageEnvelope;
 import com.linkedin.venice.message.KafkaKey;
 import com.linkedin.venice.offsets.OffsetRecord;
+import com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdapter;
 import com.linkedin.venice.pubsub.api.PubSubMessage;
 import com.linkedin.venice.pubsub.api.PubSubTopicPartition;
 import com.linkedin.venice.pubsub.consumer.PubSubConsumer;
@@ -97,6 +98,7 @@ public class ApacheKafkaConsumer implements PubSubConsumer {
     // would have made it clearer. But that call always fail and can be used
     // only after the offsets are remembered for a partition in 0.9.0.2
     // TODO: Kafka has been upgraded to 0.11.*; we might be able to simply this function.
+    topicPartition = ApacheKafkaProducerAdapter.mapToPulsar(topicPartition);
     if (lastReadOffset != OffsetRecord.LOWEST_OFFSET) {
       long nextReadOffset = lastReadOffset + 1;
       kafkaConsumer.seek(topicPartition, nextReadOffset);
@@ -109,6 +111,7 @@ public class ApacheKafkaConsumer implements PubSubConsumer {
   @Override
   public void subscribe(PubSubTopicPartition pubSubTopicPartition, long lastReadOffset) {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     int partition = pubSubTopicPartition.getPartitionNumber();
     TopicPartition topicPartition = new TopicPartition(topic, partition);
     Set<TopicPartition> topicPartitionSet = kafkaConsumer.assignment();
@@ -128,6 +131,7 @@ public class ApacheKafkaConsumer implements PubSubConsumer {
   @Override
   public void unSubscribe(PubSubTopicPartition pubSubTopicPartition) {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     int partition = pubSubTopicPartition.getPartitionNumber();
     TopicPartition topicPartition = new TopicPartition(topic, partition);
     Set<TopicPartition> topicPartitionSet = kafkaConsumer.assignment();
@@ -147,7 +151,7 @@ public class ApacheKafkaConsumer implements PubSubConsumer {
     pubSubTopicPartitionSet.forEach(
         pubSubTopicPartition -> assignments.remove(
             new TopicPartition(
-                pubSubTopicPartition.getPubSubTopic().getName(),
+                ApacheKafkaProducerAdapter.mapToPulsar(pubSubTopicPartition.getPubSubTopic().getName()),
                 pubSubTopicPartition.getPartitionNumber())));
     Collection<TopicPartition> kafkaTopicPartitions = assignments.keySet();
     kafkaConsumer.assign(kafkaTopicPartitions);
@@ -155,7 +159,7 @@ public class ApacheKafkaConsumer implements PubSubConsumer {
 
   @Override
   public void resetOffset(PubSubTopicPartition pubSubTopicPartition) {
-    String topic = pubSubTopicPartition.getPubSubTopic().getName();
+    String topic = ApacheKafkaProducerAdapter.mapToPulsar(pubSubTopicPartition.getPubSubTopic().getName());
     int partition = pubSubTopicPartition.getPartitionNumber();
     if (!hasSubscription(pubSubTopicPartition)) {
       throw new UnsubscribedTopicPartitionException(pubSubTopicPartition);
@@ -226,6 +230,7 @@ public class ApacheKafkaConsumer implements PubSubConsumer {
   @Override
   public boolean hasSubscription(PubSubTopicPartition pubSubTopicPartition) {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     int partition = pubSubTopicPartition.getPartitionNumber();
     TopicPartition tp = new TopicPartition(topic, partition);
     return kafkaConsumer.assignment().contains(tp);
@@ -237,6 +242,7 @@ public class ApacheKafkaConsumer implements PubSubConsumer {
   @Override
   public void pause(PubSubTopicPartition pubSubTopicPartition) {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     int partition = pubSubTopicPartition.getPartitionNumber();
     TopicPartition tp = new TopicPartition(topic, partition);
     if (kafkaConsumer.assignment().contains(tp)) {
@@ -252,6 +258,7 @@ public class ApacheKafkaConsumer implements PubSubConsumer {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
     int partition = pubSubTopicPartition.getPartitionNumber();
     TopicPartition tp = new TopicPartition(topic, partition);
+    tp = ApacheKafkaProducerAdapter.mapToPulsar(tp);
     if (kafkaConsumer.assignment().contains(tp)) {
       kafkaConsumer.resume(Collections.singletonList(tp));
     }
@@ -277,6 +284,7 @@ public class ApacheKafkaConsumer implements PubSubConsumer {
   @Override
   public long getOffsetLag(PubSubTopicPartition pubSubTopicPartition) {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     int partition = pubSubTopicPartition.getPartitionNumber();
     return topicPartitionsOffsetsTracker.isPresent()
         ? topicPartitionsOffsetsTracker.get().getOffsetLag(topic, partition)
@@ -286,6 +294,7 @@ public class ApacheKafkaConsumer implements PubSubConsumer {
   @Override
   public long getLatestOffset(PubSubTopicPartition pubSubTopicPartition) {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
+    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     int partition = pubSubTopicPartition.getPartitionNumber();
     return topicPartitionsOffsetsTracker.isPresent()
         ? topicPartitionsOffsetsTracker.get().getEndOffset(topic, partition)

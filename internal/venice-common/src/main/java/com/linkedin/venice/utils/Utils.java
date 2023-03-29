@@ -248,7 +248,10 @@ public class Utils {
     }
     try {
       String hostName = InetAddress.getLocalHost().getHostName();
-      LOGGER.info("Resolved local hostname from InetAddress.getLocalHost() {}", hostName);
+      LOGGER.info(
+          "Resolved local hostname from InetAddress.getLocalHost() {}",
+          hostName,
+          new Exception("Resolved local hostname from InetAddress.getLocalHost()").fillInStackTrace());
       if (StringUtils.isEmpty(hostName)) {
         throw new VeniceException("Unable to get the hostname.");
       }

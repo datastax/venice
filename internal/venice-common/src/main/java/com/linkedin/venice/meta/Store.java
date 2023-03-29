@@ -52,7 +52,7 @@ public interface Store {
    *  2. No double dashes
    */
 
-  Pattern storeNamePattern = Pattern.compile("^[a-zA-Z0-9_-]+$");
+  Pattern storeNamePattern = Pattern.compile("^[a-zA-Z0-9._-]+$");
 
   static boolean isValidStoreName(String name) {
     Matcher matcher = storeNamePattern.matcher(name);
