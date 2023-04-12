@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import kafka.server.KafkaConfig;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.protocol.SecurityProtocol;
@@ -111,7 +112,10 @@ public class KafkaSSLUtils {
       if (!veniceProperties.containsKey(config)) {
         throw new VeniceException(config + " is required when Kafka SSL is enabled");
       }
-      properties.setProperty(config, veniceProperties.getString(config));
+      String value = veniceProperties.getString(config);
+      if (!StringUtils.isBlank(value)) { // do not pass empty strings
+        properties.setProperty(config, value);
+      }
     });
     return true;
   }

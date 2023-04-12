@@ -16,6 +16,8 @@ import static com.linkedin.venice.ConfigKeys.CONTROLLER_SSL_ENABLED;
 
 import com.linkedin.venice.utils.VeniceProperties;
 import java.util.Properties;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.config.SslConfigs;
 
 
@@ -56,10 +58,14 @@ public class SSLConfig {
    */
   public Properties getKafkaSSLConfig() {
     Properties kafkaSSLConfig = new Properties();
-    kafkaSSLConfig.setProperty(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, sslKeyStoreLocation);
-    kafkaSSLConfig.setProperty(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, sslKeyStorePassword);
+
+    if (!StringUtils.isBlank(sslKeyStoreLocation)) {
+      kafkaSSLConfig.setProperty(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, sslKeyStoreLocation);
+      kafkaSSLConfig.setProperty(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, sslKeyStorePassword);
+      kafkaSSLConfig.setProperty(SslConfigs.SSL_KEY_PASSWORD_CONFIG, sslKeyPassword);
+    }
+
     kafkaSSLConfig.setProperty(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, sslKeyStoreType);
-    kafkaSSLConfig.setProperty(SslConfigs.SSL_KEY_PASSWORD_CONFIG, sslKeyPassword);
     kafkaSSLConfig.setProperty(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, sslTrustStoreLocation);
     kafkaSSLConfig.setProperty(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, sslTrustStorePassword);
     kafkaSSLConfig.setProperty(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, sslTrustStoreType);
