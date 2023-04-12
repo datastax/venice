@@ -12,3 +12,9 @@ java -jar $jar --new-store --url $url --cluster $clusterName  --store $storeName
 
 # update quota and enabled incremental push
 java -jar $jar --update-store --url $url --cluster $clusterName  --store $storeName --storage-quota -1 --incremental-push-enabled true
+
+# disable read quota
+java -jar $jar --update-store --url $url --cluster $clusterName  --store $storeName --read-quota 1000000
+
+# create the first version of the store
+java -jar $jar --empty-push --url $url --cluster $clusterName --store $storeName --push-id init --store-size 1000
