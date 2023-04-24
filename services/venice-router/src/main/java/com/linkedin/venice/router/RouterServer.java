@@ -186,7 +186,7 @@ public class RouterServer extends AbstractVeniceService {
 
     try {
       String routerConfigFilePath = args[0];
-      run(routerConfigFilePath, false);
+      run(routerConfigFilePath, true);
     } catch (Exception e) {
       throw new VeniceException("No config file parameter found", e);
     }
