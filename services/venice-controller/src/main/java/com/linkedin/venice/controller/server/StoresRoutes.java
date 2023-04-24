@@ -53,6 +53,8 @@ import static com.linkedin.venice.controllerapi.ControllerRoute.UPDATE_STORE;
 
 import com.linkedin.venice.HttpConstants;
 import com.linkedin.venice.acl.DynamicAccessController;
+import com.linkedin.venice.authentication.AuthenticationService;
+import com.linkedin.venice.authorization.AuthorizerService;
 import com.linkedin.venice.controller.Admin;
 import com.linkedin.venice.controller.AdminCommandExecutionTracker;
 import com.linkedin.venice.controller.kafka.TopicCleanupService;
@@ -104,8 +106,11 @@ import spark.Route;
 
 
 public class StoresRoutes extends AbstractRoute {
-  public StoresRoutes(boolean sslEnabled, Optional<DynamicAccessController> accessController) {
-    super(sslEnabled, accessController);
+  public StoresRoutes(boolean sslEnabled,
+                      Optional<DynamicAccessController> accessController,
+                      Optional<AuthenticationService> authenticationService,
+                      Optional<AuthorizerService> authorizerService) {
+    super(sslEnabled, accessController, authenticationService, authorizerService);
   }
 
   /**

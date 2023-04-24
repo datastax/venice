@@ -6,6 +6,11 @@ import static com.linkedin.venice.controllerapi.ControllerApiConstants.NAME;
 
 import com.linkedin.venice.acl.AclException;
 import com.linkedin.venice.acl.DynamicAccessController;
+import com.linkedin.venice.authentication.AuthenticationService;
+import com.linkedin.venice.authorization.AuthorizerService;
+import com.linkedin.venice.authorization.Method;
+import com.linkedin.venice.authorization.Principal;
+import com.linkedin.venice.authorization.Resource;
 import com.linkedin.venice.exceptions.VeniceException;
 import java.security.cert.X509Certificate;
 import java.util.Optional;
@@ -31,8 +36,19 @@ public class AbstractRoute {
   private static final ResourceAclCheck READ_ACCESS_TO_TOPIC =
       (cert, resourceName, aclClient) -> aclClient.hasAccessToTopic(cert, resourceName, "Read");
 
+  private static final PermissionAssertion ASSERT_ACCESS_TO_STORE =
+          (principal, resource, auth) -> auth.canAccess(Method.GET, resource, principal);
+  // A singleton of acl check function against topic resource
+  private static final PermissionAssertion ASSERT_WRITE_ACCESS_TO_TOPIC =
+          (principal, resource, auth) -> auth.canAccess(Method.Write, resource, principal);
+
+  private static final PermissionAssertion ASSERT_READ_ACCESS_TO_TOPIC =
+          (principal, resource, auth) -> auth.canAccess(Method.Read, resource, principal);
+
   private final boolean sslEnabled;
   private final Optional<DynamicAccessController> accessController;
+  private final Optional<AuthenticationService> authenticationService;
+  private final Optional<AuthorizerService> authorizerService;
 
   /**
    * Default constructor for different controller request routes.
@@ -41,25 +57,49 @@ public class AbstractRoute {
    * through this constructor; make sure Nuage is also in the allowlist so that they can create stores
    * @param accessController the access client that check whether a certificate can access a resource
    */
-  public AbstractRoute(boolean sslEnabled, Optional<DynamicAccessController> accessController) {
+  public AbstractRoute(boolean sslEnabled,
+                       Optional<DynamicAccessController> accessController,
+                       Optional<AuthenticationService> authenticationService,
+                       Optional<AuthorizerService> authorizerService) {
     this.sslEnabled = sslEnabled;
+    this.authenticationService = authenticationService;
     this.accessController = accessController;
+    this.authorizerService = authorizerService;
   }
 
   /**
    * Check whether the user certificate in request has access to the store specified in
    * the request.
    */
-  private boolean hasAccess(Request request, ResourceAclCheck aclCheckFunction) {
+  private boolean hasAccess(Request request,
+                            ResourceAclCheck aclCheckFunction,
+                            PermissionAssertion assertion) {
+    X509Certificate certificate = getCertificate(request);
+    Principal principal = authenticationService.map(service -> {
+      return service.getPrincipalFromHttpRequest(certificate, request::headers);
+    }).orElse(null);
+    String storeName = request.queryParams(NAME);
+
+    if (authorizerService.isPresent()) {
+      boolean allowed = assertion.apply(principal, new Resource(storeName), authorizerService.get());
+      if (!allowed) {
+        LOGGER.warn(
+                "Client {} [host:{} IP:{}] doesn't have access to store {}",
+                certificate.getSubjectX500Principal().toString(),
+                request.host(),
+                request.ip(),
+                storeName);
+        return false;
+      }
+    }
+
     if (!isAclEnabled()) {
       /**
        * Grant access if it's not required to check ACL.
        */
       return true;
     }
-    X509Certificate certificate = getCertificate(request);
 
-    String storeName = request.queryParams(NAME);
     /**
      * Currently Nuage only supports adding GET/POST methods for a store resource
      * TODO: Feature request for Nuage to support other method like PUT or customized methods
@@ -92,14 +132,14 @@ public class AbstractRoute {
    * Check whether the user has "Write" method access to the related version topics.
    */
   protected boolean hasWriteAccessToTopic(Request request) {
-    return hasAccess(request, WRITE_ACCESS_TO_TOPIC);
+    return hasAccess(request, WRITE_ACCESS_TO_TOPIC, ASSERT_WRITE_ACCESS_TO_TOPIC);
   }
 
   /**
    * Check whether the user has "Read" method access to the related version topics.
    */
   protected boolean hasReadAccessToTopic(Request request) {
-    return hasAccess(request, READ_ACCESS_TO_TOPIC);
+    return hasAccess(request, READ_ACCESS_TO_TOPIC, ASSERT_READ_ACCESS_TO_TOPIC);
   }
 
   /**
@@ -130,7 +170,7 @@ public class AbstractRoute {
    * ACL is not checked for requests that want to get metadata of a store/job.
    */
   protected boolean hasAccessToStore(Request request) {
-    return hasAccess(request, GET_ACCESS_TO_STORE);
+    return hasAccess(request, GET_ACCESS_TO_STORE, ASSERT_ACCESS_TO_STORE);
   }
 
   /**
@@ -186,5 +226,10 @@ public class AbstractRoute {
   interface ResourceAclCheck {
     boolean apply(X509Certificate clientCert, String resource, DynamicAccessController accessController)
         throws AclException;
+  }
+
+  @FunctionalInterface
+  interface PermissionAssertion {
+    boolean apply(Principal principal, Resource resource, AuthorizerService authorizerService);
   }
 }

@@ -11,6 +11,8 @@ import static com.linkedin.venice.controllerapi.ControllerRoute.UPDATE_KAFKA_TOP
 
 import com.linkedin.venice.HttpConstants;
 import com.linkedin.venice.acl.DynamicAccessController;
+import com.linkedin.venice.authentication.AuthenticationService;
+import com.linkedin.venice.authorization.AuthorizerService;
 import com.linkedin.venice.controller.Admin;
 import com.linkedin.venice.controllerapi.ChildAwareResponse;
 import com.linkedin.venice.controllerapi.ControllerResponse;
@@ -26,8 +28,11 @@ import spark.Route;
 
 
 public class ControllerRoutes extends AbstractRoute {
-  public ControllerRoutes(boolean sslEnabled, Optional<DynamicAccessController> accessController) {
-    super(sslEnabled, accessController);
+  public ControllerRoutes(boolean sslEnabled,
+                          Optional<DynamicAccessController> accessController,
+                          Optional<AuthenticationService> authenticationService,
+                          Optional<AuthorizerService> authorizerService) {
+    super(sslEnabled, accessController, authenticationService, authorizerService);
   }
 
   /**

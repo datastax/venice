@@ -7,6 +7,7 @@ import com.linkedin.d2.balancer.D2ClientBuilder;
 import com.linkedin.venice.D2.D2ClientUtils;
 import com.linkedin.venice.SSLConfig;
 import com.linkedin.venice.acl.DynamicAccessController;
+import com.linkedin.venice.authentication.AuthenticationService;
 import com.linkedin.venice.authorization.AuthorizerService;
 import com.linkedin.venice.client.store.ClientConfig;
 import com.linkedin.venice.controller.kafka.TopicCleanupService;
@@ -49,6 +50,7 @@ public class VeniceController {
   private final MetricsRepository metricsRepository;
   private final List<ServiceDiscoveryAnnouncer> serviceDiscoveryAnnouncers;
   private final Optional<DynamicAccessController> accessController;
+  private final Optional<AuthenticationService> authenticationService;
   private final Optional<AuthorizerService> authorizerService;
   private final D2Client d2Client;
   private final Optional<ClientConfig> routerClientConfig;
@@ -59,11 +61,12 @@ public class VeniceController {
   /**
    * This constructor is being used in integration test.
    *
-   * @see #VeniceController(List, MetricsRepository, List, Optional, Optional, D2Client, Optional, Optional, Optional)
+   * @see #VeniceController(List, MetricsRepository, List, Optional, Optional, D2Client, Optional, Optional, Optional, Optional)
    */
   public VeniceController(
       List<VeniceProperties> propertiesList,
       List<ServiceDiscoveryAnnouncer> serviceDiscoveryAnnouncers,
+      Optional<AuthenticationService> authenticationService,
       Optional<AuthorizerService> authorizerService,
       D2Client d2Client) {
     this(
@@ -71,6 +74,7 @@ public class VeniceController {
         TehutiUtils.getMetricsRepository(CONTROLLER_SERVICE_NAME),
         serviceDiscoveryAnnouncers,
         Optional.empty(),
+        authenticationService,
         authorizerService,
         d2Client,
         Optional.empty());
@@ -81,6 +85,7 @@ public class VeniceController {
       MetricsRepository metricsRepository,
       List<ServiceDiscoveryAnnouncer> serviceDiscoveryAnnouncers,
       Optional<DynamicAccessController> accessController,
+      Optional<AuthenticationService> authenticationService,
       Optional<AuthorizerService> authorizerService,
       D2Client d2Client,
       Optional<ClientConfig> routerClientConfig) {
@@ -89,6 +94,7 @@ public class VeniceController {
         metricsRepository,
         serviceDiscoveryAnnouncers,
         accessController,
+        authenticationService,
         authorizerService,
         d2Client,
         routerClientConfig,
@@ -121,6 +127,7 @@ public class VeniceController {
       MetricsRepository metricsRepository,
       List<ServiceDiscoveryAnnouncer> serviceDiscoveryAnnouncers,
       Optional<DynamicAccessController> accessController,
+      Optional<AuthenticationService> authenticationService,
       Optional<AuthorizerService> authorizerService,
       D2Client d2Client,
       Optional<ClientConfig> routerClientConfig,
@@ -132,6 +139,7 @@ public class VeniceController {
     Optional<SSLConfig> sslConfig = multiClusterConfigs.getSslConfig();
     this.sslEnabled = sslConfig.isPresent() && sslConfig.get().isControllerSSLEnabled();
     this.accessController = accessController;
+    this.authenticationService = authenticationService;
     this.authorizerService = authorizerService;
     this.d2Client = d2Client;
     this.routerClientConfig = routerClientConfig;
@@ -163,6 +171,8 @@ public class VeniceController {
         Optional.empty(),
         false,
         Optional.empty(),
+        Optional.empty(),
+        authorizerService,
         multiClusterConfigs.getDisabledRoutes(),
         multiClusterConfigs.getCommonConfig().getJettyConfigOverrides(),
         // TODO: Builder pattern or just pass the config object here?
@@ -180,6 +190,8 @@ public class VeniceController {
           multiClusterConfigs.getSslConfig(),
           multiClusterConfigs.adminCheckReadMethodForKafka(),
           accessController,
+            Optional.empty(),
+            authorizerService,
           multiClusterConfigs.getDisabledRoutes(),
           multiClusterConfigs.getCommonConfig().getJettyConfigOverrides(),
           multiClusterConfigs.getCommonConfig().isDisableParentRequestTopicForStreamPushes());
@@ -286,6 +298,7 @@ public class VeniceController {
     VeniceController controller = new VeniceController(
         Arrays.asList(new VeniceProperties[] { controllerProps }),
         new ArrayList<>(),
+        Optional.empty(),
         Optional.empty(),
         d2Client);
     controller.start();
