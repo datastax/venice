@@ -465,6 +465,7 @@ public class RouterServer extends AbstractVeniceService {
         schemaRepository,
         storeConfigRepository,
         config.getClusterToD2Map(),
+        config.getClusterToServerD2Map(),
         metadataRepository,
         hybridStoreQuotaRepository,
         config.getClusterName(),

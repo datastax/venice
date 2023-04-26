@@ -11,6 +11,7 @@ import static com.linkedin.venice.controllerapi.ControllerApiConstants.DEFER_VER
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.DERIVED_SCHEMA;
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.DERIVED_SCHEMA_ID;
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.DEST_FABRIC;
+import static com.linkedin.venice.controllerapi.ControllerApiConstants.ENABLE_DISABLED_REPLICAS;
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.EXECUTION_ID;
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.EXPECTED_ROUTER_COUNT;
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.FABRIC;
@@ -20,6 +21,7 @@ import static com.linkedin.venice.controllerapi.ControllerApiConstants.INCLUDE_S
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.INCREMENTAL_PUSH_VERSION;
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.IS_WRITE_COMPUTE_ENABLED;
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.KAFKA_TOPIC_LOG_COMPACTION_ENABLED;
+import static com.linkedin.venice.controllerapi.ControllerApiConstants.KAFKA_TOPIC_MIN_IN_SYNC_REPLICA;
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.KAFKA_TOPIC_RETENTION_IN_MS;
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.KEY_SCHEMA;
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.LOCKED_NODE_ID_LIST_SEPARATOR;
@@ -286,6 +288,7 @@ public class ControllerClient implements Closeable {
       long rewindTimeInSecondsOverride,
       boolean deferVersionSwap) {
     QueryParams params = newParams().add(NAME, storeName)
+        // TODO: Store size is not used anymore. Remove it after the next round of controller deployment.
         .add(STORE_SIZE, Long.toString(storeSize))
         .add(PUSH_JOB_ID, pushJobId)
         .add(PUSH_TYPE, pushType.toString())
@@ -434,6 +437,7 @@ public class ControllerClient implements Closeable {
   }
 
   public VersionCreationResponse emptyPush(String storeName, String pushJobId, long storeSize) {
+    // TODO: Store size is not used anymore. Remove it after the next round of controller deployment.
     QueryParams params =
         newParams().add(NAME, storeName).add(PUSH_JOB_ID, pushJobId).add(STORE_SIZE, Long.toString(storeSize));
     return request(ControllerRoute.EMPTY_PUSH, params, VersionCreationResponse.class);
@@ -546,6 +550,11 @@ public class ControllerClient implements Closeable {
   public ControllerResponse updateKafkaTopicRetention(String kafkaTopicName, long retentionInMs) {
     QueryParams params = newParams().add(TOPIC, kafkaTopicName).add(KAFKA_TOPIC_RETENTION_IN_MS, retentionInMs);
     return request(ControllerRoute.UPDATE_KAFKA_TOPIC_RETENTION, params, ControllerResponse.class);
+  }
+
+  public ControllerResponse updateKafkaTopicMinInSyncReplica(String kafkaTopicName, int minISR) {
+    QueryParams params = newParams().add(TOPIC, kafkaTopicName).add(KAFKA_TOPIC_MIN_IN_SYNC_REPLICA, minISR);
+    return request(ControllerRoute.UPDATE_KAFKA_TOPIC_MIN_IN_SYNC_REPLICA, params, ControllerResponse.class);
   }
 
   public <R extends ControllerResponse> R retryableRequest(int totalAttempts, Function<ControllerClient, R> request) {
@@ -732,8 +741,12 @@ public class ControllerClient implements Closeable {
     return request(ControllerRoute.LIST_NODES, newParams(), MultiNodeResponse.class);
   }
 
-  public MultiNodesStatusResponse listInstancesStatuses() {
-    return request(ControllerRoute.ClUSTER_HEALTH_INSTANCES, newParams(), MultiNodesStatusResponse.class);
+  public MultiNodesStatusResponse listInstancesStatuses(boolean enableReplicas) {
+    QueryParams params = newParams();
+    if (enableReplicas) {
+      params.add(ENABLE_DISABLED_REPLICAS, "true");
+    }
+    return request(ControllerRoute.ClUSTER_HEALTH_INSTANCES, params, MultiNodesStatusResponse.class);
   }
 
   public MultiReplicaResponse listReplicas(String storeName, int version) {
@@ -1215,7 +1228,6 @@ public class ControllerClient implements Closeable {
               "Retrying controller request, attempt = {}/{}, controller = {}, route = {}, params = {}, timeout = {}",
               attempt,
               maxAttempts,
-              timeoutMs,
               this.leaderControllerUrl,
               route.getPath(),
               params.getNameValuePairs(),

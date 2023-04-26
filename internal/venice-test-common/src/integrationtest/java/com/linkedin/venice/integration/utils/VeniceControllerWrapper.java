@@ -9,6 +9,7 @@ import static com.linkedin.venice.ConfigKeys.CHILD_CLUSTER_WHITELIST;
 import static com.linkedin.venice.ConfigKeys.CHILD_DATA_CENTER_KAFKA_URL_PREFIX;
 import static com.linkedin.venice.ConfigKeys.CLUSTER_DISCOVERY_D2_SERVICE;
 import static com.linkedin.venice.ConfigKeys.CLUSTER_TO_D2;
+import static com.linkedin.venice.ConfigKeys.CLUSTER_TO_SERVER_D2;
 import static com.linkedin.venice.ConfigKeys.CONCURRENT_INIT_ROUTINES_ENABLED;
 import static com.linkedin.venice.ConfigKeys.CONTROLLER_ADD_VERSION_VIA_ADMIN_PROTOCOL;
 import static com.linkedin.venice.ConfigKeys.CONTROLLER_NAME;
@@ -53,9 +54,9 @@ import com.linkedin.venice.controller.kafka.consumer.AdminConsumerService;
 import com.linkedin.venice.controller.supersetschema.SupersetSchemaGenerator;
 import com.linkedin.venice.controllerapi.ControllerClient;
 import com.linkedin.venice.d2.D2Server;
-import com.linkedin.venice.kafka.admin.KafkaAdminClient;
 import com.linkedin.venice.meta.PersistenceType;
 import com.linkedin.venice.meta.Version;
+import com.linkedin.venice.pubsub.adapter.kafka.admin.ApacheKafkaAdminAdapter;
 import com.linkedin.venice.servicediscovery.ServiceDiscoveryAnnouncer;
 import com.linkedin.venice.stats.TehutiUtils;
 import com.linkedin.venice.utils.KafkaSSLUtils;
@@ -146,6 +147,14 @@ public class VeniceControllerWrapper extends ProcessWrapper {
         clusterToD2 = options.getClusterToD2();
       }
 
+      Map<String, String> clusterToServerD2;
+      if (options.getClusterToServerD2() == null || options.getClusterToServerD2().isEmpty()) {
+        clusterToServerD2 = Arrays.stream(options.getClusterNames())
+            .collect(Collectors.toMap(c -> c, c -> Utils.getUniqueString("server_d2_service")));
+      } else {
+        clusterToServerD2 = options.getClusterToServerD2();
+      }
+
       for (String clusterName: options.getClusterNames()) {
         VeniceProperties clusterProps = IntegrationTestUtils
             .getClusterProps(clusterName, options.getZkAddress(), options.getKafkaBroker(), options.isSslToKafka());
@@ -173,16 +182,17 @@ public class VeniceControllerWrapper extends ProcessWrapper {
             .put(TOPIC_CREATION_THROTTLING_TIME_WINDOW_MS, 100)
             .put(STORAGE_ENGINE_OVERHEAD_RATIO, DEFAULT_STORAGE_ENGINE_OVERHEAD_RATIO)
             .put(CLUSTER_TO_D2, TestUtils.getClusterToD2String(clusterToD2))
+            .put(CLUSTER_TO_SERVER_D2, TestUtils.getClusterToD2String(clusterToServerD2))
             .put(SSL_TO_KAFKA, options.isSslToKafka())
             .put(SSL_KAFKA_BOOTSTRAP_SERVERS, options.getKafkaBroker().getSSLAddress())
             .put(ENABLE_OFFLINE_PUSH_SSL_WHITELIST, false)
             .put(ENABLE_HYBRID_PUSH_SSL_WHITELIST, false)
             .put(KAFKA_BOOTSTRAP_SERVERS, options.getKafkaBroker().getAddress())
-            .put(OFFLINE_JOB_START_TIMEOUT_MS, 60_000)
+            .put(OFFLINE_JOB_START_TIMEOUT_MS, 120_000)
             // To speed up topic cleanup
             .put(TOPIC_CLEANUP_SLEEP_INTERVAL_BETWEEN_TOPIC_LIST_FETCH_MS, 100)
             .put(TOPIC_CLEANUP_DELAY_FACTOR, 2)
-            .put(KAFKA_ADMIN_CLASS, KafkaAdminClient.class.getName())
+            .put(KAFKA_ADMIN_CLASS, ApacheKafkaAdminAdapter.class.getName())
             .put(PERSISTENCE_TYPE, PersistenceType.ROCKS_DB)
             // Moving from topic monitor to admin protocol for add version and starting ingestion
             .put(CONTROLLER_ADD_VERSION_VIA_ADMIN_PROTOCOL, true)

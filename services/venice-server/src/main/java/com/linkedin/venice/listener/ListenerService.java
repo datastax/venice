@@ -9,9 +9,9 @@ import com.linkedin.davinci.storage.StorageEngineRepository;
 import com.linkedin.venice.acl.DynamicAccessController;
 import com.linkedin.venice.acl.StaticAccessController;
 import com.linkedin.venice.cleaner.ResourceReadUsageTracker;
+import com.linkedin.venice.helix.HelixCustomizedViewOfflinePushRepository;
 import com.linkedin.venice.meta.ReadOnlySchemaRepository;
 import com.linkedin.venice.meta.ReadOnlyStoreRepository;
-import com.linkedin.venice.meta.RoutingDataRepository;
 import com.linkedin.venice.security.SSLFactory;
 import com.linkedin.venice.service.AbstractVeniceService;
 import com.linkedin.venice.utils.DaemonThreadFactory;
@@ -48,6 +48,8 @@ public class ListenerService extends AbstractVeniceService {
   private final ThreadPoolExecutor executor;
   private final ThreadPoolExecutor computeExecutor;
 
+  private ThreadPoolExecutor sslHandshakeExecutor;
+
   // TODO: move netty config to a config file
   private static int nettyBacklogSize = 1000;
 
@@ -55,7 +57,7 @@ public class ListenerService extends AbstractVeniceService {
       StorageEngineRepository storageEngineRepository,
       ReadOnlyStoreRepository storeMetadataRepository,
       ReadOnlySchemaRepository schemaRepository,
-      CompletableFuture<RoutingDataRepository> routingRepository,
+      CompletableFuture<HelixCustomizedViewOfflinePushRepository> customizedViewRepository,
       MetadataRetriever metadataRetriever,
       VeniceServerConfig serverConfig,
       MetricsRepository metricsRepository,
@@ -81,6 +83,14 @@ public class ListenerService extends AbstractVeniceService {
         serverConfig.getComputeQueueCapacity());
     new ThreadPoolStats(metricsRepository, computeExecutor, "storage_compute_thread_pool");
 
+    if (sslFactory.isPresent() && serverConfig.getSslHandshakeThreadPoolSize() > 0) {
+      this.sslHandshakeExecutor = createThreadPool(
+          serverConfig.getSslHandshakeThreadPoolSize(),
+          "SSLHandShakeThread",
+          serverConfig.getSslHandshakeQueueCapacity());
+      new ThreadPoolStats(metricsRepository, this.sslHandshakeExecutor, "ssl_handshake_thread_pool");
+    }
+
     StorageReadRequestsHandler requestHandler = createRequestHandler(
         executor,
         computeExecutor,
@@ -97,9 +107,10 @@ public class ListenerService extends AbstractVeniceService {
 
     HttpChannelInitializer channelInitializer = new HttpChannelInitializer(
         storeMetadataRepository,
-        routingRepository,
+        customizedViewRepository,
         metricsRepository,
         sslFactory,
+        sslHandshakeExecutor,
         serverConfig,
         routerAccessController,
         storeAccessController,

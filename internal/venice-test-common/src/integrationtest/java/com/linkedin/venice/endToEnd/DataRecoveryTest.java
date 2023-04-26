@@ -3,7 +3,6 @@ package com.linkedin.venice.endToEnd;
 import static com.linkedin.davinci.store.rocksdb.RocksDBServerConfig.ROCKSDB_PLAIN_TABLE_FORMAT_ENABLED;
 import static com.linkedin.venice.CommonConfigKeys.SSL_ENABLED;
 import static com.linkedin.venice.ConfigKeys.ALLOW_CLUSTER_WIPE;
-import static com.linkedin.venice.ConfigKeys.DEFAULT_MAX_NUMBER_OF_PARTITIONS;
 import static com.linkedin.venice.ConfigKeys.MIN_NUMBER_OF_UNUSED_KAFKA_TOPICS_TO_PRESERVE;
 import static com.linkedin.venice.ConfigKeys.NATIVE_REPLICATION_SOURCE_FABRIC;
 import static com.linkedin.venice.ConfigKeys.PARENT_KAFKA_CLUSTER_FABRIC_LIST;
@@ -44,6 +43,7 @@ import com.linkedin.venice.integration.utils.VeniceMultiClusterWrapper;
 import com.linkedin.venice.integration.utils.VeniceTwoLayerMultiRegionMultiClusterWrapper;
 import com.linkedin.venice.meta.DataReplicationPolicy;
 import com.linkedin.venice.meta.Version;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.samza.VeniceSystemFactory;
 import com.linkedin.venice.utils.TestUtils;
 import com.linkedin.venice.utils.Utils;
@@ -76,6 +76,7 @@ public class DataRecoveryTest {
   private List<VeniceMultiClusterWrapper> childDatacenters;
   private List<VeniceControllerWrapper> parentControllers;
   private String clusterName;
+  private PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
 
   @BeforeClass(alwaysRun = true)
   public void setUp() {
@@ -89,7 +90,6 @@ public class DataRecoveryTest {
     serverProperties.put(SERVER_KAFKA_PRODUCER_POOL_SIZE_PER_KAFKA_CLUSTER, "2");
 
     Properties controllerProps = new Properties();
-    controllerProps.put(DEFAULT_MAX_NUMBER_OF_PARTITIONS, 1000);
     controllerProps.put(NATIVE_REPLICATION_SOURCE_FABRIC, DEFAULT_PARENT_DATA_CENTER_REGION_NAME);
     controllerProps.put(PARENT_KAFKA_CLUSTER_FABRIC_LIST, DEFAULT_PARENT_DATA_CENTER_REGION_NAME);
     controllerProps.put(ALLOW_CLUSTER_WIPE, "true");
@@ -165,7 +165,9 @@ public class DataRecoveryTest {
       TestUtils.waitForNonDeterministicAssertion(30, TimeUnit.SECONDS, true, () -> {
         Admin dc1Admin = childDatacenters.get(1).getLeaderController(clusterName).getVeniceAdmin();
         Assert.assertTrue(dc1Admin.getStore(clusterName, storeName).containsVersion(1));
-        Assert.assertTrue(dc1Admin.getTopicManager().containsTopic(Version.composeKafkaTopic(storeName, 1)));
+        Assert.assertTrue(
+            dc1Admin.getTopicManager()
+                .containsTopic(pubSubTopicRepository.getTopic(Version.composeKafkaTopic(storeName, 1))));
       });
     }
   }

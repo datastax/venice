@@ -1,6 +1,7 @@
 package com.linkedin.venice.fastclient.utils;
 
 import static com.linkedin.venice.ConfigKeys.SERVER_HTTP2_INBOUND_ENABLED;
+import static com.linkedin.venice.ConfigKeys.SERVER_QUOTA_ENFORCEMENT_ENABLED;
 import static com.linkedin.venice.system.store.MetaStoreWriter.KEY_STRING_CLUSTER_NAME;
 import static com.linkedin.venice.system.store.MetaStoreWriter.KEY_STRING_PARTITION_ID;
 import static com.linkedin.venice.system.store.MetaStoreWriter.KEY_STRING_STORE_NAME;
@@ -22,7 +23,9 @@ import com.linkedin.venice.fastclient.schema.TestValueSchema;
 import com.linkedin.venice.helix.HelixReadOnlySchemaRepository;
 import com.linkedin.venice.integration.utils.D2TestUtils;
 import com.linkedin.venice.integration.utils.ServiceFactory;
+import com.linkedin.venice.integration.utils.VeniceClusterCreateOptions;
 import com.linkedin.venice.integration.utils.VeniceClusterWrapper;
+import com.linkedin.venice.integration.utils.VeniceRouterWrapper;
 import com.linkedin.venice.meta.Version;
 import com.linkedin.venice.serialization.VeniceKafkaSerializer;
 import com.linkedin.venice.serialization.avro.VeniceAvroKafkaSerializer;
@@ -91,8 +94,18 @@ public abstract class AbstractClientEndToEndSetup {
    * is faster than the counter decrement following a successful get, so some get() calls will
    * not be sent due to blocked instances. Setting this variable to be 100 from the tests for now.
    * This needs to be discussed further.
-    */
-  public final Object[] BATCH_GET_KEY_SIZE = { 2, /*recordCnt*/ };
+   */
+  public final Object[] BATCH_GET_KEY_SIZE = { 2, recordCnt };
+
+  @DataProvider(name = "FastClient-Four-Boolean-And-A-Number")
+  public Object[][] fourBooleanAndANumber() {
+    return DataProviderUtils.allPermutationGenerator(
+        DataProviderUtils.BOOLEAN,
+        DataProviderUtils.BOOLEAN,
+        DataProviderUtils.BOOLEAN,
+        DataProviderUtils.BOOLEAN,
+        BATCH_GET_KEY_SIZE);
+  }
 
   @DataProvider(name = "FastClient-Three-Boolean-And-A-Number")
   public Object[][] threeBooleanAndANumber() {
@@ -108,14 +121,25 @@ public abstract class AbstractClientEndToEndSetup {
     Utils.thisIsLocalhost();
     Properties props = new Properties();
     props.put(SERVER_HTTP2_INBOUND_ENABLED, "true");
-    veniceCluster = ServiceFactory.getVeniceCluster(1, 2, 1, 2, 100, true, false, props);
+    props.put(SERVER_QUOTA_ENFORCEMENT_ENABLED, "true");
+    VeniceClusterCreateOptions createOptions = new VeniceClusterCreateOptions.Builder().numberOfControllers(1)
+        .numberOfServers(2)
+        .numberOfRouters(1)
+        .replicationFactor(2)
+        .partitionSize(100)
+        .sslToStorageNodes(true)
+        .sslToKafka(false)
+        .extraProperties(props)
+        .build();
+    veniceCluster = ServiceFactory.getVeniceCluster(createOptions);
 
     r2Client = ClientTestUtils.getR2Client(ClientTestUtils.FastClientHTTPVariant.HTTP_2_BASED_HTTPCLIENT5);
 
-    d2Client = D2TestUtils.getAndStartD2Client(veniceCluster.getZk().getAddress());
+    d2Client = D2TestUtils.getAndStartHttpsD2Client(veniceCluster.getZk().getAddress());
 
     prepareData();
     prepareMetaSystemStore();
+    waitForRouterD2();
   }
 
   protected void prepareData() throws Exception {
@@ -197,12 +221,29 @@ public abstract class AbstractClientEndToEndSetup {
     }
   }
 
+  private void waitForRouterD2() {
+    AvroGenericStoreClient<String, GenericRecord> thinClient =
+        com.linkedin.venice.client.store.ClientFactory.getAndStartGenericAvroClient(
+            com.linkedin.venice.client.store.ClientConfig.defaultGenericClientConfig(storeName)
+                .setVeniceURL(veniceCluster.getRandomRouterSslURL())
+                .setSslFactory(SslUtils.getVeniceLocalSslFactory())
+                .setD2Client(d2Client)
+                .setD2ServiceName(VeniceRouterWrapper.CLUSTER_DISCOVERY_D2_SERVICE_NAME));
+
+    TestUtils.waitForNonDeterministicAssertion(
+        30,
+        TimeUnit.SECONDS,
+        true,
+        () -> assertNotNull(thinClient.get(keyPrefix + "0")));
+  }
+
   protected AvroGenericStoreClient<String, Object> getGenericFastVsonClient(
       ClientConfig.ClientConfigBuilder clientConfigBuilder,
       MetricsRepository metricsRepository,
-      Optional<AvroGenericStoreClient> vsonThinClient) throws IOException {
+      Optional<AvroGenericStoreClient> vsonThinClient,
+      boolean useRequestBasedMetadata) throws IOException {
     clientConfigBuilder.setVsonStore(true);
-    setupStoreMetadata(clientConfigBuilder);
+    setupStoreMetadata(clientConfigBuilder, useRequestBasedMetadata);
 
     // clientConfigBuilder will be used for building multiple clients over this test flow,
     // so, always specify a new MetricsRepository to avoid conflicts.
@@ -220,8 +261,9 @@ public abstract class AbstractClientEndToEndSetup {
 
   protected AvroGenericStoreClient<String, GenericRecord> getGenericFastClient(
       ClientConfig.ClientConfigBuilder clientConfigBuilder,
-      MetricsRepository metricsRepository) throws IOException {
-    setupStoreMetadata(clientConfigBuilder);
+      MetricsRepository metricsRepository,
+      boolean useRequestBasedMetadata) throws IOException {
+    setupStoreMetadata(clientConfigBuilder, useRequestBasedMetadata);
 
     // clientConfigBuilder will be used for building multiple clients over this test flow,
     // so, always specify a new MetricsRepository to avoid conflicts.
@@ -235,8 +277,9 @@ public abstract class AbstractClientEndToEndSetup {
   protected AvroSpecificStoreClient<String, TestValueSchema> getSpecificFastClient(
       ClientConfig.ClientConfigBuilder clientConfigBuilder,
       MetricsRepository metricsRepository,
-      Class specificValueClass) throws IOException {
-    setupStoreMetadata(clientConfigBuilder);
+      Class specificValueClass,
+      boolean useRequestBasedMetadata) throws IOException {
+    setupStoreMetadata(clientConfigBuilder, useRequestBasedMetadata);
 
     // clientConfigBuilder will be used for building multiple clients over this test flow,
     // so, always specify a new MetricsRepository to avoid conflicts.
@@ -248,9 +291,18 @@ public abstract class AbstractClientEndToEndSetup {
     return ClientFactory.getAndStartSpecificStoreClient(clientConfig);
   }
 
-  protected void setupStoreMetadata(ClientConfig.ClientConfigBuilder clientConfigBuilder) throws IOException {
-    setupThinClientBasedStoreMetadata();
-    clientConfigBuilder.setThinClientForMetaStore(thinClientForMetaStore);
+  protected void setupStoreMetadata(
+      ClientConfig.ClientConfigBuilder clientConfigBuilder,
+      boolean useRequestBasedMetadata) throws IOException {
+    if (useRequestBasedMetadata) {
+      clientConfigBuilder.setRequestBasedMetadata(true);
+      clientConfigBuilder.setD2Client(d2Client);
+      clientConfigBuilder.setClusterDiscoveryD2Service(VeniceRouterWrapper.CLUSTER_DISCOVERY_D2_SERVICE_NAME);
+      clientConfigBuilder.setMetadataRefreshIntervalInSeconds(1);
+    } else {
+      setupThinClientBasedStoreMetadata();
+      clientConfigBuilder.setThinClientForMetaStore(thinClientForMetaStore);
+    }
   }
 
   private void setupThinClientBasedStoreMetadata() {

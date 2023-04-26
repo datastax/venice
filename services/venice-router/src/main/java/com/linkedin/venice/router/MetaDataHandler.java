@@ -8,13 +8,11 @@ import static com.linkedin.venice.controllerapi.ControllerApiConstants.PARTITION
 import static com.linkedin.venice.controllerapi.D2ServiceDiscoveryResponseV2.D2_SERVICE_DISCOVERY_RESPONSE_V2_ENABLED;
 import static com.linkedin.venice.meta.DataReplicationPolicy.ACTIVE_ACTIVE;
 import static com.linkedin.venice.meta.DataReplicationPolicy.NON_AGGREGATE;
+import static com.linkedin.venice.router.api.RouterResourceType.TYPE_LATEST_VALUE_SCHEMA;
 import static com.linkedin.venice.router.api.VenicePathParser.TYPE_CLUSTER_DISCOVERY;
 import static com.linkedin.venice.router.api.VenicePathParser.TYPE_KEY_SCHEMA;
-import static com.linkedin.venice.router.api.VenicePathParser.TYPE_LEADER_CONTROLLER;
-import static com.linkedin.venice.router.api.VenicePathParser.TYPE_LEADER_CONTROLLER_LEGACY;
 import static com.linkedin.venice.router.api.VenicePathParser.TYPE_REQUEST_TOPIC;
 import static com.linkedin.venice.router.api.VenicePathParser.TYPE_RESOURCE_STATE;
-import static com.linkedin.venice.router.api.VenicePathParser.TYPE_UPDATE_SCHEMA;
 import static com.linkedin.venice.router.api.VenicePathParser.TYPE_VALUE_SCHEMA;
 import static com.linkedin.venice.router.api.VenicePathParserHelper.parseRequest;
 import static com.linkedin.venice.utils.NettyUtils.setupResponseAndFlush;
@@ -108,6 +106,7 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
   private final ReadOnlySchemaRepository schemaRepo;
   private final ReadOnlyStoreConfigRepository storeConfigRepo;
   private final Map<String, String> clusterToD2Map;
+  private final Map<String, String> clusterToServerD2Map;
   private final Optional<HelixHybridStoreQuotaRepository> hybridStoreQuotaRepository;
   private final ReadOnlyStoreRepository storeRepository;
   private final String clusterName;
@@ -132,6 +131,7 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
       ReadOnlySchemaRepository schemaRepo,
       ReadOnlyStoreConfigRepository storeConfigRepo,
       Map<String, String> clusterToD2Map,
+      Map<String, String> clusterToServerD2Map,
       ReadOnlyStoreRepository storeRepository,
       Optional<HelixHybridStoreQuotaRepository> hybridStoreQuotaRepository,
       String clusterName,
@@ -142,6 +142,7 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
     this.schemaRepo = schemaRepo;
     this.storeConfigRepo = storeConfigRepo;
     this.clusterToD2Map = clusterToD2Map;
+    this.clusterToServerD2Map = clusterToServerD2Map;
     this.hybridStoreQuotaRepository = hybridStoreQuotaRepository;
     this.storeRepository = storeRepository;
     this.clusterName = clusterName;
@@ -172,6 +173,11 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
         // URI: /value_schema/{$storeName}/{$valueSchemaId} - Get single value schema
         handleValueSchemaLookup(ctx, helper);
         break;
+      case TYPE_LATEST_VALUE_SCHEMA:
+        // The request could fetch the latest value schema for the given store
+        // URI: /latest_value_schema/{$storeName} - Get the latest value schema
+        handleLatestValueSchemaLookup(ctx, helper);
+        break;
       case TYPE_UPDATE_SCHEMA:
         // URI: /update_schema/{$storeName}/{$valueSchemaId}
         // The request could fetch the latest derived update schema of a specific value schema
@@ -179,7 +185,7 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
         break;
       case TYPE_CLUSTER_DISCOVERY:
         // URI: /discover_cluster/${storeName}
-        hanldeD2ServiceLookup(ctx, helper, req.headers());
+        handleD2ServiceLookup(ctx, helper, req.headers());
         break;
       case TYPE_RESOURCE_STATE:
         // URI: /resource_state
@@ -284,6 +290,34 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
     }
   }
 
+  /**
+   * Returns the latest available value schema of the store. The latest superset schema is:
+   * 1. If a superset schema exists for the store, return the superset schema
+   * 2. If no superset schema exists for the store, return the value schema with the largest schema id
+   */
+  private void handleLatestValueSchemaLookup(ChannelHandlerContext ctx, VenicePathParserHelper helper)
+      throws IOException {
+    String storeName = helper.getResourceName();
+    checkResourceName(storeName, "/" + TYPE_LATEST_VALUE_SCHEMA + "/${storeName}");
+
+    // URI: /latest_value_schema/{$storeName}
+    // Get the latest value schema
+    // If a superset schema exists, return that
+    // Otherwise, return the largest value schema
+    SchemaResponse responseObject = new SchemaResponse();
+    responseObject.setCluster(clusterName);
+    responseObject.setName(storeName);
+    SchemaEntry latestValueSchemaEntry = schemaRepo.getSupersetOrLatestValueSchema(storeName);
+    if (latestValueSchemaEntry == null) {
+      byte[] errBody = ("Latest value schema doesn't exist for store: " + storeName).getBytes();
+      setupResponseAndFlush(INTERNAL_SERVER_ERROR, errBody, false, ctx);
+      return;
+    }
+    responseObject.setId(latestValueSchemaEntry.getId());
+    responseObject.setSchemaStr(latestValueSchemaEntry.getSchemaStr());
+    setupResponseAndFlush(OK, OBJECT_MAPPER.writeValueAsBytes(responseObject), true, ctx);
+  }
+
   private void handleUpdateSchemaLookup(ChannelHandlerContext ctx, VenicePathParserHelper helper) throws IOException {
     String storeName = helper.getResourceName();
     checkResourceName(storeName, "/" + TYPE_VALUE_SCHEMA + "/${storeName}/${valueSchemaId}");
@@ -314,7 +348,7 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
     }
   }
 
-  private void hanldeD2ServiceLookup(ChannelHandlerContext ctx, VenicePathParserHelper helper, HttpHeaders headers)
+  private void handleD2ServiceLookup(ChannelHandlerContext ctx, VenicePathParserHelper helper, HttpHeaders headers)
       throws IOException {
     String storeName = helper.getResourceName();
     checkResourceName(storeName, "/" + TYPE_CLUSTER_DISCOVERY + "/${storeName}");
@@ -331,11 +365,13 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
       setupErrorD2DiscoveryResponseAndFlush(NOT_FOUND, errorMsg, headers, ctx);
       return;
     }
+    String serverD2Service = getServerD2ServiceByClusterName(clusterName);
     if (headers.contains(D2_SERVICE_DISCOVERY_RESPONSE_V2_ENABLED)) {
       D2ServiceDiscoveryResponseV2 responseObject = new D2ServiceDiscoveryResponseV2();
       responseObject.setCluster(config.get().getCluster());
       responseObject.setName(config.get().getStoreName());
       responseObject.setD2Service(d2Service);
+      responseObject.setServerD2Service(serverD2Service);
       responseObject.setZkAddress(zkAddress);
       responseObject.setKafkaBootstrapServers(kafkaBootstrapServers);
       setupResponseAndFlush(OK, OBJECT_MAPPER.writeValueAsBytes(responseObject), true, ctx);
@@ -344,6 +380,7 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
       responseObject.setCluster(config.get().getCluster());
       responseObject.setName(config.get().getStoreName());
       responseObject.setD2Service(d2Service);
+      responseObject.setServerD2Service(serverD2Service);
       setupResponseAndFlush(OK, OBJECT_MAPPER.writeValueAsBytes(responseObject), true, ctx);
     }
   }
@@ -596,6 +633,10 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
 
   private String getD2ServiceByClusterName(String clusterName) {
     return clusterToD2Map.get(clusterName);
+  }
+
+  private String getServerD2ServiceByClusterName(String clusterName) {
+    return clusterToServerD2Map.get(clusterName);
   }
 
   private void checkResourceName(String resourceName, String path) {

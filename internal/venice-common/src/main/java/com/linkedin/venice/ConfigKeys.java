@@ -1,6 +1,8 @@
 package com.linkedin.venice;
 
+import com.linkedin.venice.pubsub.adapter.kafka.consumer.ApacheKafkaConsumerConfig;
 import com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerConfig;
+import com.linkedin.venice.pubsub.api.PubSubAdminAdapter;
 
 
 public class ConfigKeys {
@@ -42,6 +44,21 @@ public class ConfigKeys {
   public static final String KAFKA_PRODUCER_RETRIES_CONFIG = ApacheKafkaProducerConfig.KAFKA_PRODUCER_RETRIES_CONFIG;
   public static final String KAFKA_PRODUCER_DELIVERY_TIMEOUT_MS =
       ApacheKafkaProducerConfig.KAFKA_PRODUCER_DELIVERY_TIMEOUT_MS;
+
+  public static final String KAFKA_AUTO_OFFSET_RESET_CONFIG = ApacheKafkaConsumerConfig.KAFKA_AUTO_OFFSET_RESET_CONFIG;
+  public static final String KAFKA_ENABLE_AUTO_COMMIT_CONFIG =
+      ApacheKafkaConsumerConfig.KAFKA_ENABLE_AUTO_COMMIT_CONFIG;
+  public static final String KAFKA_FETCH_MIN_BYTES_CONFIG = ApacheKafkaConsumerConfig.KAFKA_FETCH_MIN_BYTES_CONFIG;
+  public static final String KAFKA_FETCH_MAX_BYTES_CONFIG = ApacheKafkaConsumerConfig.KAFKA_FETCH_MAX_BYTES_CONFIG;
+  public static final String KAFKA_MAX_POLL_RECORDS_CONFIG = ApacheKafkaConsumerConfig.KAFKA_MAX_POLL_RECORDS_CONFIG;
+  public static final String KAFKA_FETCH_MAX_WAIT_MS_CONFIG = ApacheKafkaConsumerConfig.KAFKA_FETCH_MAX_WAIT_MS_CONFIG;
+  public static final String KAFKA_MAX_PARTITION_FETCH_BYTES_CONFIG =
+      ApacheKafkaConsumerConfig.KAFKA_MAX_PARTITION_FETCH_BYTES_CONFIG;
+  public static final String KAFKA_CONSUMER_POLL_RETRY_TIMES_CONFIG =
+      ApacheKafkaConsumerConfig.KAFKA_CONSUMER_POLL_RETRY_TIMES_CONFIG;
+  public static final String KAFKA_CONSUMER_POLL_RETRY_BACKOFF_MS_CONFIG =
+      ApacheKafkaConsumerConfig.KAFKA_CONSUMER_POLL_RETRY_BACKOFF_MS_CONFIG;
+
   public static final String KAFKA_ADMIN_GET_TOPIC_CONFIG_MAX_RETRY_TIME_SEC =
       "kafka.admin.get.topic.config.max.retry.sec";
 
@@ -204,10 +221,19 @@ public class ConfigKeys {
   public static final String DEFAULT_NUMBER_OF_PARTITION_FOR_HYBRID = "default.partition.count.for.hybrid";
   public static final String DEFAULT_MAX_NUMBER_OF_PARTITIONS = "default.partition.max.count";
   public static final String DEFAULT_PARTITION_SIZE = "default.partition.size";
+  /**
+   * Whether to round up the version-level partition count calculated by storage quota. Default is false.
+   */
+  public static final String ENABLE_PARTITION_COUNT_ROUND_UP = "enable.partition.count.round.up";
+  /**
+   * If {@value ENABLE_PARTITION_COUNT_ROUND_UP} is enabled, this config defines the round up size. Default is 1.
+   */
+  public static final String PARTITION_COUNT_ROUND_UP_SIZE = "partition.count.round.up.size";
   public static final String OFFLINE_JOB_START_TIMEOUT_MS = "offline.job.start.timeout.ms";
   public static final String DELAY_TO_REBALANCE_MS = "delay.to.rebalance.ms";
   public static final String MIN_ACTIVE_REPLICA = "min.active.replica";
   public static final String CLUSTER_TO_D2 = "cluster.to.d2";
+  public static final String CLUSTER_TO_SERVER_D2 = "cluster.to.server.d2";
   public static final String HELIX_SEND_MESSAGE_TIMEOUT_MS = "helix.send.message.timeout.ms";
   public static final String REFRESH_ATTEMPTS_FOR_ZK_RECONNECT = "refresh.attempts.for.zk.reconnect";
   public static final String REFRESH_INTERVAL_FOR_ZK_RECONNECT_MS = "refresh.interval.for.zk.reconnect.ms";
@@ -1501,7 +1527,7 @@ public class ConfigKeys {
   public static final String ROUTER_DICTIONARY_PROCESSING_THREADS = "router.dictionary.processing.threads";
 
   /**
-   * The class name to use for the {@link com.linkedin.venice.kafka.admin.KafkaAdminWrapper}.
+   * The class name to use for the {@link PubSubAdminAdapter}.
    */
   public static final String KAFKA_ADMIN_CLASS = "kafka.admin.class";
 
@@ -1671,6 +1697,11 @@ public class ConfigKeys {
       "leaked.push.status.clean.up.service.interval.ms";
 
   /**
+   * This config defines the allowed linger time for a leaked resource.
+   */
+  public static final String LEAKED_RESOURCE_ALLOWED_LINGER_TIME_MS = "leaked.resource.allowed.linger.time.ms";
+
+  /**
    * This config controls whether to use da-vinci based implementation of the system store repository when
    * CLIENT_USE_SYSTEM_STORE_REPOSITORY is set to true. By default the thin-client based implementation will be used.
    */
@@ -1829,4 +1860,16 @@ public class ConfigKeys {
    * but that can have other side effects, so it may not be preferred.
    */
   public static final String FAST_AVRO_FIELD_LIMIT_PER_METHOD = "fast.avro.field.limit.per.method";
+
+  /**
+   * Config to control the number of threads in the thread pool executor used for ssl handshake in servers. The purpose
+   * is to limit the concurrency of ssl handshakes. The feature to use a thread pool executor for handling ssl
+   * handshakes is disabled if the value of this config is <= 0. The default value is 0.
+   */
+  public static final String SERVER_SSL_HANDSHAKE_THREAD_POOL_SIZE = "server.ssl.handshake.thread.pool.size";
+
+  /**
+   * Config to control the queue capacity for the thread pool executor used for ssl handshake in servers.
+   */
+  public static final String SERVER_SSL_HANDSHAKE_QUEUE_CAPACITY = "server.ssl.handshake.queue.capacity";
 }

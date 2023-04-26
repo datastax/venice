@@ -21,7 +21,6 @@ import static org.testng.Assert.assertTrue;
 
 import com.linkedin.avroutil1.compatibility.AvroCompatibilityHelper;
 import com.linkedin.venice.common.VeniceSystemStoreType;
-import com.linkedin.venice.controller.supersetschema.SupersetSchemaGenerator;
 import com.linkedin.venice.controller.supersetschema.SupersetSchemaGeneratorWithCustomProp;
 import com.linkedin.venice.controllerapi.ControllerClient;
 import com.linkedin.venice.controllerapi.ControllerResponse;
@@ -31,7 +30,8 @@ import com.linkedin.venice.controllerapi.SchemaResponse;
 import com.linkedin.venice.controllerapi.StoreResponse;
 import com.linkedin.venice.controllerapi.UpdateStoreQueryParams;
 import com.linkedin.venice.controllerapi.VersionCreationResponse;
-import com.linkedin.venice.integration.utils.KafkaBrokerWrapper;
+import com.linkedin.venice.integration.utils.PubSubBrokerConfigs;
+import com.linkedin.venice.integration.utils.PubSubBrokerWrapper;
 import com.linkedin.venice.integration.utils.ServiceFactory;
 import com.linkedin.venice.integration.utils.VeniceClusterWrapper;
 import com.linkedin.venice.integration.utils.VeniceControllerCreateOptions;
@@ -408,12 +408,13 @@ public class VeniceParentHelixAdminTest {
         .put(VeniceControllerWrapper.SUPERSET_SCHEMA_GENERATOR, new SupersetSchemaGeneratorWithCustomProp(CUSTOM_PROP));
 
     try (ZkServerWrapper zkServer = ServiceFactory.getZkServer();
-        KafkaBrokerWrapper kafkaBrokerWrapper = ServiceFactory.getKafkaBroker(zkServer);
+        PubSubBrokerWrapper pubSubBrokerWrapper =
+            ServiceFactory.getPubSubBroker(new PubSubBrokerConfigs.Builder().setZkWrapper(zkServer).build());
         VeniceControllerWrapper childControllerWrapper = ServiceFactory.getVeniceController(
-            new VeniceControllerCreateOptions.Builder(clusterName, zkServer, kafkaBrokerWrapper).build());
+            new VeniceControllerCreateOptions.Builder(clusterName, zkServer, pubSubBrokerWrapper).build());
         ZkServerWrapper parentZk = ServiceFactory.getZkServer();
         VeniceControllerWrapper parentControllerWrapper = ServiceFactory.getVeniceController(
-            new VeniceControllerCreateOptions.Builder(clusterName, parentZk, kafkaBrokerWrapper)
+            new VeniceControllerCreateOptions.Builder(clusterName, parentZk, pubSubBrokerWrapper)
                 .childControllers(new VeniceControllerWrapper[] { childControllerWrapper })
                 .extraProperties(properties)
                 .build())) {
@@ -538,33 +539,35 @@ public class VeniceParentHelixAdminTest {
 
   @DataProvider(name = "CONTROLLER_SSL_SUPERSET_SCHEMA_GENERATOR")
   public static Object[][] controllerSSLAndSupersetSchemaGenerator() {
-    return new Object[][] { new Object[] { true, Optional.of(new SupersetSchemaGeneratorWithCustomProp("test_prop")) },
-        new Object[] { false, Optional.empty() } };
+    return new Object[][] { new Object[] { true, true }, new Object[] { false, false } };
   }
 
   @Test(dataProvider = "CONTROLLER_SSL_SUPERSET_SCHEMA_GENERATOR", timeOut = DEFAULT_TEST_TIMEOUT_MS * 10)
   public void testStoreMetaDataUpdateFromParentToChildController(
       boolean isControllerSslEnabled,
-      Optional<SupersetSchemaGenerator> supersetSchemaGenerator) throws IOException {
+      boolean isSupersetSchemaGeneratorEnabled) throws IOException {
     String clusterName = Utils.getUniqueString("testStoreMetadataUpdate");
     Properties properties = new Properties();
     // This cluster setup don't have server, we cannot perform push here.
     properties.setProperty(CONTROLLER_AUTO_MATERIALIZE_META_SYSTEM_STORE, String.valueOf(false));
     properties.setProperty(CONTROLLER_AUTO_MATERIALIZE_DAVINCI_PUSH_STATUS_SYSTEM_STORE, String.valueOf(false));
-    if (supersetSchemaGenerator.isPresent()) {
+    if (isSupersetSchemaGeneratorEnabled) {
       properties.setProperty(CONTROLLER_PARENT_EXTERNAL_SUPERSET_SCHEMA_GENERATION_ENABLED, String.valueOf(true));
-      properties.put(VeniceControllerWrapper.SUPERSET_SCHEMA_GENERATOR, supersetSchemaGenerator.get());
+      properties.put(
+          VeniceControllerWrapper.SUPERSET_SCHEMA_GENERATOR,
+          new SupersetSchemaGeneratorWithCustomProp("test_prop"));
     }
 
     try (ZkServerWrapper zkServer = ServiceFactory.getZkServer();
-        KafkaBrokerWrapper kafkaBrokerWrapper = ServiceFactory.getKafkaBroker(zkServer);
+        PubSubBrokerWrapper pubSubBrokerWrapper =
+            ServiceFactory.getPubSubBroker(new PubSubBrokerConfigs.Builder().setZkWrapper(zkServer).build());
         VeniceControllerWrapper childControllerWrapper = ServiceFactory.getVeniceController(
-            new VeniceControllerCreateOptions.Builder(clusterName, zkServer, kafkaBrokerWrapper)
+            new VeniceControllerCreateOptions.Builder(clusterName, zkServer, pubSubBrokerWrapper)
                 .sslToKafka(isControllerSslEnabled)
                 .build());
         ZkServerWrapper parentZk = ServiceFactory.getZkServer();
         VeniceControllerWrapper parentControllerWrapper = ServiceFactory.getVeniceController(
-            new VeniceControllerCreateOptions.Builder(clusterName, parentZk, kafkaBrokerWrapper)
+            new VeniceControllerCreateOptions.Builder(clusterName, parentZk, pubSubBrokerWrapper)
                 .childControllers(new VeniceControllerWrapper[] { childControllerWrapper })
                 .extraProperties(properties)
                 .sslToKafka(isControllerSslEnabled)

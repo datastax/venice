@@ -16,6 +16,8 @@ import com.linkedin.venice.utils.RetryUtils;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.apache.avro.Schema;
@@ -32,6 +34,7 @@ public class RouterBasedStoreSchemaFetcher implements StoreSchemaFetcher {
   public static final String TYPE_KEY_SCHEMA = "key_schema";
   public static final String TYPE_VALUE_SCHEMA = "value_schema";
   public static final String TYPE_UPDATE_SCHEMA = "update_schema";
+  public static final String TYPE_LATEST_VALUE_SCHEMA = "latest_value_schema";
   private final AbstractAvroStoreClient storeClient;
   private static final ObjectMapper OBJECT_MAPPER = ObjectMapperFactory.getInstance();
 
@@ -57,21 +60,63 @@ public class RouterBasedStoreSchemaFetcher implements StoreSchemaFetcher {
 
   @Override
   public Schema getLatestValueSchema() {
+    // Fetch the latest value schema for the specified value schema.
+    String latestSchemaRequestPath = TYPE_LATEST_VALUE_SCHEMA + "/" + storeClient.getStoreName();
+    String latestSchemaStr;
+    try {
+      latestSchemaStr = fetchSingleSchemaString(latestSchemaRequestPath);
+    } catch (Exception e) {
+      // If the routers don't support /latest_value_schema yet, an Exception will be thrown from executeRequest
+      // In such a case, fetch the latest value schema from the /value_schema endpoint.
+      return getLatestValueSchemaFromAllValueSchemas();
+    }
+
+    Schema latestSchema;
+    try {
+      latestSchema = parseSchemaFromJSONLooseValidation(latestSchemaStr);
+    } catch (Exception e) {
+      throw new VeniceException("Got exception while parsing superset schema", e);
+    }
+    return latestSchema;
+  }
+
+  private Schema getLatestValueSchemaFromAllValueSchemas() {
     String valueSchemaRequestPath = TYPE_VALUE_SCHEMA + "/" + storeClient.getStoreName();
     MultiSchemaResponse multiSchemaResponse = fetchAllValueSchemas(valueSchemaRequestPath);
-    int latestSchemaId = SchemaData.INVALID_VALUE_SCHEMA_ID;
+    int targetSchemaId = multiSchemaResponse.getSuperSetSchemaId();
+    int largestSchemaId = SchemaData.INVALID_VALUE_SCHEMA_ID;
     String schemaStr = null;
     for (MultiSchemaResponse.Schema schema: multiSchemaResponse.getSchemas()) {
-      if (SchemaData.INVALID_VALUE_SCHEMA_ID == latestSchemaId || latestSchemaId < schema.getId()) {
-        latestSchemaId = schema.getId();
+      if (targetSchemaId != SchemaData.INVALID_VALUE_SCHEMA_ID && schema.getId() == targetSchemaId) {
+        schemaStr = schema.getSchemaStr();
+        break;
       }
-      schemaStr = schema.getSchemaStr();
+
+      if (SchemaData.INVALID_VALUE_SCHEMA_ID == largestSchemaId || largestSchemaId < schema.getId()) {
+        largestSchemaId = schema.getId();
+        schemaStr = schema.getSchemaStr();
+      }
     }
     try {
       return parseSchemaFromJSONLooseValidation(schemaStr);
     } catch (Exception e) {
       throw new VeniceException("Got exception while parsing latest value schema", e);
     }
+  }
+
+  @Override
+  public Set<Schema> getAllValueSchemas() {
+    String valueSchemaRequestPath = TYPE_VALUE_SCHEMA + "/" + storeClient.getStoreName();
+    MultiSchemaResponse multiSchemaResponse = fetchAllValueSchemas(valueSchemaRequestPath);
+    Set<Schema> schemaSet = new HashSet<>();
+    try {
+      for (MultiSchemaResponse.Schema schema: multiSchemaResponse.getSchemas()) {
+        schemaSet.add(parseSchemaFromJSONLooseValidation(schema.getSchemaStr()));
+      }
+    } catch (Exception e) {
+      throw new VeniceException("Got exception while parsing value schema", e);
+    }
+    return schemaSet;
   }
 
   @Override

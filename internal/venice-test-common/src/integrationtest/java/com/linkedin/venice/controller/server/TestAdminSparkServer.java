@@ -104,7 +104,7 @@ public class TestAdminSparkServer extends AbstractTestAdminSparkServer {
 
   @Test(timeOut = TEST_TIMEOUT)
   public void controllerClientCanQueryInstanceStatusInCluster() {
-    MultiNodesStatusResponse nodeResponse = controllerClient.listInstancesStatuses();
+    MultiNodesStatusResponse nodeResponse = controllerClient.listInstancesStatuses(false);
     Assert.assertFalse(nodeResponse.isError(), nodeResponse.getError());
     Assert.assertEquals(nodeResponse.getInstancesStatusMap().size(), STORAGE_NODE_COUNT, "Node count does not match");
     Assert.assertEquals(
@@ -980,7 +980,9 @@ public class TestAdminSparkServer extends AbstractTestAdminSparkServer {
     childControllerAdmin.incrementVersionIdempotent(clusterName, storeName, "test", 1, 1);
     String topicToDelete = Version.composeKafkaTopic(storeName, 1);
     TestUtils.waitForNonDeterministicAssertion(30, TimeUnit.SECONDS, () -> {
-      Assert.assertTrue(childControllerAdmin.getTopicManager().containsTopic(topicToDelete));
+      Assert.assertTrue(
+          childControllerAdmin.getTopicManager()
+              .containsTopic(cluster.getPubSubTopicRepository().getTopic(topicToDelete)));
       Assert.assertFalse(childControllerAdmin.isTopicTruncated(topicToDelete));
     });
     controllerClient.deleteKafkaTopic(topicToDelete);
