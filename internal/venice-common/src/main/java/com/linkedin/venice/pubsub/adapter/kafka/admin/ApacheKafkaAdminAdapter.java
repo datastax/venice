@@ -1,13 +1,13 @@
 package com.linkedin.venice.pubsub.adapter.kafka.admin;
 
 import static com.linkedin.venice.ConfigKeys.KAFKA_ADMIN_GET_TOPIC_CONFIG_MAX_RETRY_TIME_SEC;
+import static com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdapter.mapToPulsar;
 import static com.linkedin.venice.utils.Time.MS_PER_SECOND;
 
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.exceptions.VeniceRetriableException;
 import com.linkedin.venice.kafka.TopicDoesNotExistException;
 import com.linkedin.venice.kafka.TopicManager;
-import com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdapter;
 import com.linkedin.venice.pubsub.PubSubTopicConfiguration;
 import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pubsub.api.PubSubAdminAdapter;
@@ -72,13 +72,13 @@ public class ApacheKafkaAdminAdapter implements PubSubAdminAdapter {
     if (replication > Short.MAX_VALUE) {
       throw new IllegalArgumentException("Replication factor cannot be > " + Short.MAX_VALUE);
     }
-    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     // Convert topic configuration into properties
     Properties topicProperties = unmarshallProperties(pubSubTopicConfiguration);
     Map<String, String> topicPropertiesMap = new HashMap<>();
     topicProperties.stringPropertyNames().forEach(key -> topicPropertiesMap.put(key, topicProperties.getProperty(key)));
     Collection<NewTopic> newTopics = Collections
-        .singleton(new NewTopic(topic.getName(), numPartitions, (short) replication).configs(topicPropertiesMap));
+        .singleton(new NewTopic(mapToPulsar(topic.getName()), numPartitions, (short) replication)
+                .configs(topicPropertiesMap));
     try {
       getKafkaAdminClient().createTopics(newTopics).all().get();
     } catch (ExecutionException e) {
@@ -112,20 +112,19 @@ public class ApacheKafkaAdminAdapter implements PubSubAdminAdapter {
   // catch/extract any expected exceptions such as UnknownTopicOrPartitionException.
   @Override
   public KafkaFuture<Void> deleteTopic(PubSubTopic topic) {
-    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
-    return getKafkaAdminClient().deleteTopics(Collections.singleton(topic.getName())).values().get(topic.getName());
+    return getKafkaAdminClient().deleteTopics(Collections.singleton(mapToPulsar(topic.getName()))).values().get(topic.getName());
   }
 
   @Override
   public void setTopicConfig(PubSubTopic topic, PubSubTopicConfiguration pubSubTopicConfiguration)
       throws TopicDoesNotExistException {
-    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
     Properties topicProperties = unmarshallProperties(pubSubTopicConfiguration);
     Collection<ConfigEntry> entries = new ArrayList<>(topicProperties.stringPropertyNames().size());
     topicProperties.stringPropertyNames()
         .forEach(key -> entries.add(new ConfigEntry(key, topicProperties.getProperty(key))));
     Map<ConfigResource, Config> configs =
-        Collections.singletonMap(new ConfigResource(ConfigResource.Type.TOPIC, topic.getName()), new Config(entries));
+        Collections.singletonMap(new ConfigResource(ConfigResource.Type.TOPIC,
+                mapToPulsar(topic.getName())), new Config(entries));
     try {
       getKafkaAdminClient().alterConfigs(configs).all().get();
     } catch (ExecutionException | InterruptedException e) {
@@ -151,8 +150,8 @@ public class ApacheKafkaAdminAdapter implements PubSubAdminAdapter {
 
   @Override
   public PubSubTopicConfiguration getTopicConfig(PubSubTopic topic) throws TopicDoesNotExistException {
-    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
-    ConfigResource resource = new ConfigResource(ConfigResource.Type.TOPIC, topic.getName());
+    ConfigResource resource = new ConfigResource(ConfigResource.Type.TOPIC,
+            mapToPulsar(topic.getName()));
     Collection<ConfigResource> configResources = Collections.singleton(resource);
     DescribeConfigsResult result = getKafkaAdminClient().describeConfigs(configResources);
     try {
@@ -189,8 +188,7 @@ public class ApacheKafkaAdminAdapter implements PubSubAdminAdapter {
   @Override
   public boolean containsTopic(PubSubTopic topic) {
     try {
-      topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
-      Collection<String> topicNames = Collections.singleton(topic.getName());
+      Collection<String> topicNames = Collections.singleton(mapToPulsar(topic.getName()));
       TopicDescription topicDescription =
           getKafkaAdminClient().describeTopics(topicNames).values().get(topic.getName()).get();
 
@@ -216,12 +214,11 @@ public class ApacheKafkaAdminAdapter implements PubSubAdminAdapter {
 
   @Override
   public boolean containsTopicWithPartitionCheck(PubSubTopicPartition pubSubTopicPartition) {
-    pubSubTopicPartition = ApacheKafkaProducerAdapter.mapToPulsar(pubSubTopicPartition);
 
     PubSubTopic pubSubTopic = pubSubTopicPartition.getPubSubTopic();
     int partitionID = pubSubTopicPartition.getPartitionNumber();
     try {
-      Collection<String> topicNames = Collections.singleton(pubSubTopic.getName());
+      Collection<String> topicNames = Collections.singleton(mapToPulsar(pubSubTopic.getName()));
       TopicDescription topicDescription =
           getKafkaAdminClient().describeTopics(topicNames).values().get(pubSubTopic.getName()).get();
 
@@ -259,7 +256,6 @@ public class ApacheKafkaAdminAdapter implements PubSubAdminAdapter {
 
   @Override
   public Map<PubSubTopic, PubSubTopicConfiguration> getSomeTopicConfigs(Set<PubSubTopic> pubSubTopics) {
-    topicNames = topicNames.stream().map(ApacheKafkaProducerAdapter::mapToPulsar).collect(Collectors.toSet());
     return getSomethingForSomeTopics(pubSubTopics, config -> marshallProperties(config), "configs");
   }
 
@@ -356,10 +352,9 @@ public class ApacheKafkaAdminAdapter implements PubSubAdminAdapter {
       String content) {
     Map<PubSubTopic, T> topicToSomething = new HashMap<>();
     try {
-      topicNames = topicNames.stream().map(ApacheKafkaProducerAdapter::mapToPulsar).collect(Collectors.toSet());
       // Step 1: Marshall topic names into config resources
       Collection<ConfigResource> configResources = pubSubTopics.stream()
-          .map(topicName -> new ConfigResource(ConfigResource.Type.TOPIC, topicName.getName()))
+          .map(topicName -> new ConfigResource(ConfigResource.Type.TOPIC, mapToPulsar(topicName.getName())))
           .collect(Collectors.toCollection(ArrayList::new));
 
       // Step 2: retrieve the configs of specified topics
@@ -369,7 +364,7 @@ public class ApacheKafkaAdminAdapter implements PubSubAdminAdapter {
           // Step 3: populate the map to be returned
           .forEach(
               (configResource, config) -> topicToSomething.put(
-                  pubSubTopicRepository.getTopic(configResource.name()),
+                  pubSubTopicRepository.getTopic(mapToPulsar(configResource.name())),
                   // Step 4: transform the config
                   configTransformer.apply(config)));
 

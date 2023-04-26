@@ -10,7 +10,6 @@ import com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdap
 import com.linkedin.venice.pubsub.PubSubTopicPartitionInfo;
 import com.linkedin.venice.pubsub.adapter.kafka.TopicPartitionsOffsetsTracker;
 import com.linkedin.venice.pubsub.api.PubSubConsumerAdapter;
->>>>>>> main:internal/venice-common/src/main/java/com/linkedin/venice/pubsub/adapter/kafka/consumer/ApacheKafkaConsumerAdapter.java
 import com.linkedin.venice.pubsub.api.PubSubMessage;
 import com.linkedin.venice.pubsub.api.PubSubTopic;
 import com.linkedin.venice.pubsub.api.PubSubTopicPartition;
@@ -36,6 +35,8 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.RetriableException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import static com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdapter.mapToPulsar;
 
 
 /**
@@ -103,7 +104,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
     // would have made it clearer. But that call always fail and can be used
     // only after the offsets are remembered for a partition in 0.9.0.2
     // TODO: Kafka has been upgraded to 0.11.*; we might be able to simply this function.
-    topicPartition = ApacheKafkaProducerAdapter.mapToPulsar(topicPartition);
+    topicPartition = mapToPulsar(topicPartition);
     if (lastReadOffset != OffsetRecord.LOWEST_OFFSET) {
       long nextReadOffset = lastReadOffset + 1;
       kafkaConsumer.seek(topicPartition, nextReadOffset);
@@ -116,7 +117,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
   @Override
   public void subscribe(PubSubTopicPartition pubSubTopicPartition, long lastReadOffset) {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
-    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
+    topic = mapToPulsar(topic);
     int partition = pubSubTopicPartition.getPartitionNumber();
     TopicPartition topicPartition = new TopicPartition(topic, partition);
     Set<TopicPartition> topicPartitionSet = kafkaConsumer.assignment();
@@ -136,7 +137,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
   @Override
   public void unSubscribe(PubSubTopicPartition pubSubTopicPartition) {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
-    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
+    topic = mapToPulsar(topic);
     int partition = pubSubTopicPartition.getPartitionNumber();
     TopicPartition topicPartition = new TopicPartition(topic, partition);
     Set<TopicPartition> topicPartitionSet = kafkaConsumer.assignment();
@@ -157,7 +158,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
     pubSubTopicPartitionSet.forEach(
         pubSubTopicPartition -> assignments.remove(
             new TopicPartition(
-                ApacheKafkaProducerAdapter.mapToPulsar(pubSubTopicPartition.getPubSubTopic().getName()),
+                mapToPulsar(pubSubTopicPartition.getPubSubTopic().getName()),
                 pubSubTopicPartition.getPartitionNumber())));
     Collection<TopicPartition> kafkaTopicPartitions = assignments.keySet();
     kafkaConsumer.assign(kafkaTopicPartitions);
@@ -165,7 +166,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
 
   @Override
   public void resetOffset(PubSubTopicPartition pubSubTopicPartition) {
-    String topic = ApacheKafkaProducerAdapter.mapToPulsar(pubSubTopicPartition.getPubSubTopic().getName());
+    String topic = mapToPulsar(pubSubTopicPartition.getPubSubTopic().getName());
     int partition = pubSubTopicPartition.getPartitionNumber();
     if (!hasSubscription(pubSubTopicPartition)) {
       throw new UnsubscribedTopicPartitionException(pubSubTopicPartition);
@@ -236,7 +237,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
   @Override
   public boolean hasSubscription(PubSubTopicPartition pubSubTopicPartition) {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
-    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
+    topic = mapToPulsar(topic);
     int partition = pubSubTopicPartition.getPartitionNumber();
     TopicPartition tp = new TopicPartition(topic, partition);
     return kafkaConsumer.assignment().contains(tp);
@@ -248,7 +249,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
   @Override
   public void pause(PubSubTopicPartition pubSubTopicPartition) {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
-    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
+    topic = mapToPulsar(topic);
     int partition = pubSubTopicPartition.getPartitionNumber();
     TopicPartition tp = new TopicPartition(topic, partition);
     if (kafkaConsumer.assignment().contains(tp)) {
@@ -264,7 +265,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
     int partition = pubSubTopicPartition.getPartitionNumber();
     TopicPartition tp = new TopicPartition(topic, partition);
-    tp = ApacheKafkaProducerAdapter.mapToPulsar(tp);
+    tp = mapToPulsar(tp);
     if (kafkaConsumer.assignment().contains(tp)) {
       kafkaConsumer.resume(Collections.singletonList(tp));
     }
@@ -292,7 +293,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
   @Override
   public long getOffsetLag(PubSubTopicPartition pubSubTopicPartition) {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
-    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
+    topic = mapToPulsar(topic);
     int partition = pubSubTopicPartition.getPartitionNumber();
     return topicPartitionsOffsetsTracker != null ? topicPartitionsOffsetsTracker.getOffsetLag(topic, partition) : -1;
   }
@@ -300,7 +301,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
   @Override
   public long getLatestOffset(PubSubTopicPartition pubSubTopicPartition) {
     String topic = pubSubTopicPartition.getPubSubTopic().getName();
-    topic = ApacheKafkaProducerAdapter.mapToPulsar(topic);
+    topic = mapToPulsar(topic);
     int partition = pubSubTopicPartition.getPartitionNumber();
     return topicPartitionsOffsetsTracker != null ? topicPartitionsOffsetsTracker.getEndOffset(topic, partition) : -1;
   }
