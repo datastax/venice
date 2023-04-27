@@ -190,7 +190,7 @@ public class ApacheKafkaAdminAdapter implements PubSubAdminAdapter {
     try {
       Collection<String> topicNames = Collections.singleton(mapToPulsar(topic.getName()));
       TopicDescription topicDescription =
-          getKafkaAdminClient().describeTopics(topicNames).values().get(topic.getName()).get();
+          getKafkaAdminClient().describeTopics(topicNames).values().get(mapToPulsar(topic.getName())).get();
 
       if (topicDescription == null) {
         LOGGER.warn(
@@ -220,7 +220,7 @@ public class ApacheKafkaAdminAdapter implements PubSubAdminAdapter {
     try {
       Collection<String> topicNames = Collections.singleton(mapToPulsar(pubSubTopic.getName()));
       TopicDescription topicDescription =
-          getKafkaAdminClient().describeTopics(topicNames).values().get(pubSubTopic.getName()).get();
+          getKafkaAdminClient().describeTopics(topicNames).values().get(mapToPulsar(pubSubTopic.getName())).get();
 
       if (topicDescription == null) {
         LOGGER.warn(

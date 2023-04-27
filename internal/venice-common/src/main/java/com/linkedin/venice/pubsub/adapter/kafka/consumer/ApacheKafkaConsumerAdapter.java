@@ -309,7 +309,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
   @Override
   public Long offsetForTime(PubSubTopicPartition pubSubTopicPartition, long timestamp, Duration timeout) {
     TopicPartition topicPartition =
-        new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber());
+        mapToPulsar(new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber()));
     Map<TopicPartition, OffsetAndTimestamp> topicPartitionOffsetMap =
         this.kafkaConsumer.offsetsForTimes(Collections.singletonMap(topicPartition, timestamp), timeout);
     if (topicPartitionOffsetMap.isEmpty()) {
@@ -325,7 +325,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
   @Override
   public Long offsetForTime(PubSubTopicPartition pubSubTopicPartition, long timestamp) {
     TopicPartition topicPartition =
-        new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber());
+        mapToPulsar(new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber()));
     Map<TopicPartition, OffsetAndTimestamp> topicPartitionOffsetMap =
         this.kafkaConsumer.offsetsForTimes(Collections.singletonMap(topicPartition, timestamp));
     if (topicPartitionOffsetMap.isEmpty()) {
@@ -341,7 +341,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
   @Override
   public Long beginningOffset(PubSubTopicPartition pubSubTopicPartition, Duration timeout) {
     TopicPartition topicPartition =
-        new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber());
+        mapToPulsar(new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber()));
     Map<TopicPartition, Long> topicPartitionOffset =
         this.kafkaConsumer.beginningOffsets(Collections.singleton(topicPartition), timeout);
     return topicPartitionOffset.get(topicPartition);
@@ -352,9 +352,9 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
     Map<TopicPartition, PubSubTopicPartition> pubSubTopicPartitionMapping = new HashMap<>(partitions.size());
     for (PubSubTopicPartition pubSubTopicPartition: partitions) {
       pubSubTopicPartitionMapping.put(
-          new TopicPartition(
+          mapToPulsar(new TopicPartition(
               pubSubTopicPartition.getPubSubTopic().getName(),
-              pubSubTopicPartition.getPartitionNumber()),
+              pubSubTopicPartition.getPartitionNumber())),
           pubSubTopicPartition);
     }
     Map<PubSubTopicPartition, Long> pubSubTopicPartitionOffsetMap = new HashMap<>(partitions.size());
@@ -369,7 +369,7 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
   @Override
   public Long endOffset(PubSubTopicPartition pubSubTopicPartition) {
     TopicPartition topicPartition =
-        new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber());
+        mapToPulsar(new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber()));
     Map<TopicPartition, Long> topicPartitionOffsetMap =
         this.kafkaConsumer.endOffsets(Collections.singleton(topicPartition));
     return topicPartitionOffsetMap.get(topicPartition);
@@ -377,13 +377,13 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
 
   @Override
   public List<PubSubTopicPartitionInfo> partitionsFor(PubSubTopic topic) {
-    List<PartitionInfo> partitionInfos = this.kafkaConsumer.partitionsFor(topic.getName());
+    List<PartitionInfo> partitionInfos = this.kafkaConsumer.partitionsFor(mapToPulsar(topic.getName()));
     if (partitionInfos == null) {
       return null;
     }
     List<PubSubTopicPartitionInfo> pubSubTopicPartitionInfos = new ArrayList<>(partitionInfos.size());
     for (PartitionInfo partitionInfo: partitionInfos) {
-      if (partitionInfo.topic().equals(topic.getName())) {
+      if (partitionInfo.topic().equals(mapToPulsar(topic.getName()))) {
         pubSubTopicPartitionInfos.add(
             new PubSubTopicPartitionInfo(
                 topic,
