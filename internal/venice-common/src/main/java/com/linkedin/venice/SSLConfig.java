@@ -16,7 +16,6 @@ import static com.linkedin.venice.ConfigKeys.CONTROLLER_SSL_ENABLED;
 
 import com.linkedin.venice.utils.VeniceProperties;
 import java.util.Properties;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.config.SslConfigs;
 
@@ -39,10 +38,10 @@ public class SSLConfig {
 
   public SSLConfig(VeniceProperties veniceProperties) {
     // The following configs are required for SSL support
-    sslKeyStoreLocation = veniceProperties.getString(SSL_KEYSTORE_LOCATION);
-    sslKeyStorePassword = veniceProperties.getString(SSL_KEYSTORE_PASSWORD);
+    sslKeyStoreLocation = veniceProperties.getString(SSL_KEYSTORE_LOCATION, "");
+    sslKeyStorePassword = veniceProperties.getString(SSL_KEYSTORE_PASSWORD, "");
     sslKeyStoreType = veniceProperties.getString(SSL_KEYSTORE_TYPE);
-    sslKeyPassword = veniceProperties.getString(SSL_KEY_PASSWORD);
+    sslKeyPassword = veniceProperties.getString(SSL_KEY_PASSWORD, "");
     sslTrustStoreLocation = veniceProperties.getString(SSL_TRUSTSTORE_LOCATION);
     sslTrustStorePassword = veniceProperties.getString(SSL_TRUSTSTORE_PASSWORD);
     sslTrustStoreType = veniceProperties.getString(SSL_TRUSTSTORE_TYPE);
@@ -84,8 +83,10 @@ public class SSLConfig {
     Properties sslProperties = new Properties();
     sslProperties.setProperty(SSL_ENABLED, "true");
     sslProperties.setProperty(SSL_KEYSTORE_TYPE, sslKeyStoreType);
-    sslProperties.setProperty(SSL_KEYSTORE_LOCATION, sslKeyStoreLocation);
-    sslProperties.setProperty(SSL_KEYSTORE_PASSWORD, sslKeyStorePassword);
+    if (!StringUtils.isBlank(sslKeyStoreLocation)) {
+      sslProperties.setProperty(SSL_KEYSTORE_LOCATION, sslKeyStoreLocation);
+      sslProperties.setProperty(SSL_KEYSTORE_PASSWORD, sslKeyStorePassword);
+    }
     sslProperties.setProperty(SSL_TRUSTSTORE_TYPE, sslTrustStoreType);
     sslProperties.setProperty(SSL_TRUSTSTORE_LOCATION, sslTrustStoreLocation);
     sslProperties.setProperty(SSL_TRUSTSTORE_PASSWORD, sslTrustStorePassword);

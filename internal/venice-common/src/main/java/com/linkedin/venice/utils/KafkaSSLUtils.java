@@ -9,22 +9,37 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import kafka.server.KafkaConfig;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.protocol.SecurityProtocol;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 
 public class KafkaSSLUtils {
+  private static final Logger LOGGER = LogManager.getLogger(KafkaSSLUtils.class);
+
   /**
-   * Mandatory Kafka SSL configs when SSL is enabled.
+   * All Kafka SSL configs.
    */
-  private static final List<String> KAFKA_SSL_MANDATORY_CONFIGS = Arrays.asList(
+  private static final List<String> KAFKA_SSL_CONFIGS = Arrays.asList(
       CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
       SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG,
       SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG,
       SslConfigs.SSL_KEYSTORE_TYPE_CONFIG,
       SslConfigs.SSL_KEY_PASSWORD_CONFIG,
+      SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG,
+      SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
+      SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG,
+      SslConfigs.SSL_KEYMANAGER_ALGORITHM_CONFIG,
+      SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG,
+      SslConfigs.SSL_SECURE_RANDOM_IMPLEMENTATION_CONFIG);
+
+  /**
+   * Mandatory Kafka SSL configs when SSL is enabled.
+   */
+  private static final List<String> KAFKA_SSL_MANDATORY_CONFIGS = Arrays.asList(
+      CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
       SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG,
       SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG,
       SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG,
@@ -107,14 +122,18 @@ public class KafkaSSLUtils {
       // TLS/SSL is not enabled
       return false;
     }
+
+    LOGGER.info("Kafka properties {}", veniceProperties.toProperties());
+
     // Since SSL is enabled, the following configs are mandatory
-    KAFKA_SSL_MANDATORY_CONFIGS.forEach(config -> {
-      if (!veniceProperties.containsKey(config)) {
-        throw new VeniceException(config + " is required when Kafka SSL is enabled");
-      }
-      String value = veniceProperties.getString(config);
-      if (!StringUtils.isBlank(value)) { // do not pass empty strings
+    KAFKA_SSL_CONFIGS.forEach(config -> {
+      if (veniceProperties.containsKey(config)) {
+        String value = veniceProperties.getString(config);
         properties.setProperty(config, value);
+      } else {
+        if (KAFKA_SSL_MANDATORY_CONFIGS.contains(config)) {
+          throw new VeniceException(config + " is required when Kafka SSL is enabled");
+        }
       }
     });
     return true;
