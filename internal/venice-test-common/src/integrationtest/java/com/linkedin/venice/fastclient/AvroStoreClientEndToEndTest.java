@@ -261,12 +261,7 @@ public class AvroStoreClientEndToEndTest extends AbstractClientEndToEndSetup {
             Optional.of(genericVsonThinClient),
             useRequestBasedMetadata);
       } else {
-        runTest(
-            clientConfigBuilder,
-            multiGet,
-            batchGetKeySize, m -> {},
-            Optional.empty(),
-            useRequestBasedMetadata);
+        runTest(clientConfigBuilder, multiGet, batchGetKeySize, m -> {}, Optional.empty(), useRequestBasedMetadata);
       }
     } finally {
       if (genericThinClient != null) {
@@ -281,9 +276,8 @@ public class AvroStoreClientEndToEndTest extends AbstractClientEndToEndSetup {
     }
   }
 
-  @Test(expectedExceptions = { VeniceClientException.class, ExecutionException.class },
-      expectedExceptionsMessageRegExp = ".* metadata is not ready, attempting to re-initialize",
-      dataProvider = "FastClient-Three-Boolean-And-A-Number", timeOut = TIME_OUT)
+  @Test(expectedExceptions = { VeniceClientException.class,
+      ExecutionException.class }, expectedExceptionsMessageRegExp = ".* metadata is not ready, attempting to re-initialize", dataProvider = "FastClient-Three-Boolean-And-A-Number", timeOut = TIME_OUT)
   public void testFastClientWithoutServers(
       boolean multiGet,
       boolean dualRead,
@@ -315,21 +309,9 @@ public class AvroStoreClientEndToEndTest extends AbstractClientEndToEndSetup {
         clientConfigBuilder.setSpecificThinClient(specificThinClient);
         genericVsonThinClient = getGenericVsonThinClient();
 
-        runTest(
-            clientConfigBuilder,
-            multiGet,
-            batchGetKeySize,
-            m -> {},
-            Optional.of(genericVsonThinClient),
-            true);
+        runTest(clientConfigBuilder, multiGet, batchGetKeySize, m -> {}, Optional.of(genericVsonThinClient), true);
       } else {
-        runTest(
-            clientConfigBuilder,
-            multiGet,
-            batchGetKeySize,
-            m -> {},
-            Optional.empty(),
-            true);
+        runTest(clientConfigBuilder, multiGet, batchGetKeySize, m -> {}, Optional.empty(), true);
       }
     } finally {
       if (genericThinClient != null) {
