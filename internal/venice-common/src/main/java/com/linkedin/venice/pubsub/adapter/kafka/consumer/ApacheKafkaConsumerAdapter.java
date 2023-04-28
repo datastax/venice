@@ -1,12 +1,13 @@
 package com.linkedin.venice.pubsub.adapter.kafka.consumer;
 
+import static com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdapter.mapToPulsar;
+
 import com.linkedin.venice.annotation.NotThreadsafe;
 import com.linkedin.venice.exceptions.UnsubscribedTopicPartitionException;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.kafka.protocol.KafkaMessageEnvelope;
 import com.linkedin.venice.message.KafkaKey;
 import com.linkedin.venice.offsets.OffsetRecord;
-import com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdapter;
 import com.linkedin.venice.pubsub.PubSubTopicPartitionInfo;
 import com.linkedin.venice.pubsub.adapter.kafka.TopicPartitionsOffsetsTracker;
 import com.linkedin.venice.pubsub.api.PubSubConsumerAdapter;
@@ -35,8 +36,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.RetriableException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import static com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdapter.mapToPulsar;
 
 
 /**
@@ -308,8 +307,8 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
 
   @Override
   public Long offsetForTime(PubSubTopicPartition pubSubTopicPartition, long timestamp, Duration timeout) {
-    TopicPartition topicPartition =
-        mapToPulsar(new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber()));
+    TopicPartition topicPartition = mapToPulsar(
+        new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber()));
     Map<TopicPartition, OffsetAndTimestamp> topicPartitionOffsetMap =
         this.kafkaConsumer.offsetsForTimes(Collections.singletonMap(topicPartition, timestamp), timeout);
     if (topicPartitionOffsetMap.isEmpty()) {
@@ -324,8 +323,8 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
 
   @Override
   public Long offsetForTime(PubSubTopicPartition pubSubTopicPartition, long timestamp) {
-    TopicPartition topicPartition =
-        mapToPulsar(new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber()));
+    TopicPartition topicPartition = mapToPulsar(
+        new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber()));
     Map<TopicPartition, OffsetAndTimestamp> topicPartitionOffsetMap =
         this.kafkaConsumer.offsetsForTimes(Collections.singletonMap(topicPartition, timestamp));
     if (topicPartitionOffsetMap.isEmpty()) {
@@ -340,8 +339,8 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
 
   @Override
   public Long beginningOffset(PubSubTopicPartition pubSubTopicPartition, Duration timeout) {
-    TopicPartition topicPartition =
-        mapToPulsar(new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber()));
+    TopicPartition topicPartition = mapToPulsar(
+        new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber()));
     Map<TopicPartition, Long> topicPartitionOffset =
         this.kafkaConsumer.beginningOffsets(Collections.singleton(topicPartition), timeout);
     return topicPartitionOffset.get(topicPartition);
@@ -352,9 +351,10 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
     Map<TopicPartition, PubSubTopicPartition> pubSubTopicPartitionMapping = new HashMap<>(partitions.size());
     for (PubSubTopicPartition pubSubTopicPartition: partitions) {
       pubSubTopicPartitionMapping.put(
-          mapToPulsar(new TopicPartition(
-              pubSubTopicPartition.getPubSubTopic().getName(),
-              pubSubTopicPartition.getPartitionNumber())),
+          mapToPulsar(
+              new TopicPartition(
+                  pubSubTopicPartition.getPubSubTopic().getName(),
+                  pubSubTopicPartition.getPartitionNumber())),
           pubSubTopicPartition);
     }
     Map<PubSubTopicPartition, Long> pubSubTopicPartitionOffsetMap = new HashMap<>(partitions.size());
@@ -368,8 +368,8 @@ public class ApacheKafkaConsumerAdapter implements PubSubConsumerAdapter {
 
   @Override
   public Long endOffset(PubSubTopicPartition pubSubTopicPartition) {
-    TopicPartition topicPartition =
-        mapToPulsar(new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber()));
+    TopicPartition topicPartition = mapToPulsar(
+        new TopicPartition(pubSubTopicPartition.getPubSubTopic().getName(), pubSubTopicPartition.getPartitionNumber()));
     Map<TopicPartition, Long> topicPartitionOffsetMap =
         this.kafkaConsumer.endOffsets(Collections.singleton(topicPartition));
     return topicPartitionOffsetMap.get(topicPartition);
