@@ -34,7 +34,9 @@ public class ApacheKafkaConsumerConfig {
   private final Properties consumerProperties;
 
   public ApacheKafkaConsumerConfig(VeniceProperties veniceProperties, String consumerName) {
-    this.consumerProperties = veniceProperties.clipAndFilterNamespace(KAFKA_CONFIG_PREFIX).toProperties();
+    // here veniceProperties is meant to be directly a raw set of configuration for the Kafka
+    // client, they are not prefixed by "kafka."
+    this.consumerProperties = veniceProperties.toProperties();
     if (consumerName != null) {
       consumerProperties.put(ConsumerConfig.CLIENT_ID_CONFIG, consumerName);
     }
@@ -49,6 +51,7 @@ public class ApacheKafkaConsumerConfig {
     consumerProperties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, 1024 * 1024);
     consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
     consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+    LOGGER.info("Created ApacheKafkaConsumerConfig from {} -> {}", veniceProperties, consumerProperties);
   }
 
   public Properties getConsumerProperties() {

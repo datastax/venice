@@ -21,8 +21,7 @@ public class ApacheKafkaAdminConfig {
 
   public ApacheKafkaAdminConfig(VeniceProperties veniceProperties) {
     this.brokerAddress = ApacheKafkaProducerConfig.getPubsubBrokerAddress(veniceProperties);
-    this.adminProperties =
-        veniceProperties.clipAndFilterNamespace(ApacheKafkaProducerConfig.KAFKA_CONFIG_PREFIX).toProperties();
+    this.adminProperties = veniceProperties.toProperties();
     this.adminProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerAddress);
     // Setup ssl config if needed.
     if (KafkaSSLUtils.validateAndCopyKafkaSSLConfig(veniceProperties, this.adminProperties)) {
@@ -37,7 +36,7 @@ public class ApacheKafkaAdminConfig {
           ConfigKeys.KAFKA_ADMIN_GET_TOPIC_CONFIG_MAX_RETRY_TIME_SEC,
           DEFAULT_KAFKA_ADMIN_GET_TOPIC_CONFIG_RETRY_IN_SECONDS);
     }
-    LOGGER.info("Kafka admin client properties: " + adminProperties);
+    LOGGER.info("Kafka admin client properties: {} (from {})", adminProperties, veniceProperties);
   }
 
   public Properties getAdminProperties() {
