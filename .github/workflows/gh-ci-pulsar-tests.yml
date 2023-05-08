@@ -52,7 +52,7 @@ jobs:
         shell: bash
         run: |
           cd ${{ github.workspace }}/docker
-          ./build-venice-docker-images.sh
+          SKIP_DOCKER_PUSH=true ./build-venice-docker-images.sh
           cd ${{ github.workspace }}
 
       - name: Build docker images for Pulsar test (latest-dev tag)

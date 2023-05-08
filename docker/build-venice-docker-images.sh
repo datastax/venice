@@ -36,6 +36,11 @@ rm -f venice-controller/venice-controller-all.jar
 rm -f venice-router/venice-router-all.jar
 rm */*.py */*yaml
 
-for target in ${targets[@]}; do
-   docker push $repository/$target:$version
-done
+if [[ -z $SKIP_DOCKER_PUSH ]]
+then
+  for target in ${targets[@]}; do
+     docker push $repository/$target:$version
+  done
+else
+  echo "Skipping docker push"
+fi
