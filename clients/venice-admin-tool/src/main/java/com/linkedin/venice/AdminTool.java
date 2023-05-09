@@ -173,6 +173,8 @@ public class AdminTool {
         LogConfigurator.disableLog();
       }
 
+      String token = getOptionalArgument(cmd, Arg.TOKEN, "");
+
       if (Arrays.asList(foundCommand.getRequiredArgs()).contains(Arg.URL)
           && Arrays.asList(foundCommand.getRequiredArgs()).contains(Arg.CLUSTER)) {
         veniceUrl = getRequiredArgument(cmd, Arg.URL);
@@ -182,7 +184,7 @@ public class AdminTool {
          * SSL config file is not mandatory now; build the controller with SSL config if provided.
          */
         buildSslFactory(cmd);
-        controllerClient = ControllerClient.constructClusterControllerClient(clusterName, veniceUrl, sslFactory);
+        controllerClient = ControllerClient.constructClusterControllerClient(clusterName, veniceUrl, sslFactory, token);
       }
 
       if (Arrays.asList(foundCommand.getRequiredArgs()).contains(Arg.CLUSTER_SRC)) {
@@ -195,10 +197,6 @@ public class AdminTool {
 
       if (cmd.hasOption(Arg.FLAT_JSON.toString())) {
         jsonWriter = ObjectMapperFactory.getInstance().writer();
-      }
-
-      if (Arrays.asList(foundCommand.getOptionalArgs()).contains(Arg.TOKEN)) {
-        controllerClient.addHeader("Authorization", "Bearer " + getOptionalArgument(cmd, Arg.TOKEN, ""));
       }
 
       switch (foundCommand) {
@@ -2436,8 +2434,9 @@ public class AdminTool {
       if (storeName.isEmpty()) {
         throw new VeniceException("Please either provide a valid topic name or a cluster name.");
       }
+      String token = getOptionalArgument(cmd, Arg.TOKEN);
       D2ServiceDiscoveryResponse clusterDiscovery =
-          ControllerClient.discoverCluster(veniceControllerUrls, storeName, sslFactory, 3);
+          ControllerClient.discoverCluster(veniceControllerUrls, storeName, sslFactory, 3, token);
       clusterName = clusterDiscovery.getCluster();
     }
 

@@ -53,20 +53,15 @@ public class ControllerTransport implements AutoCloseable {
   private final CloseableHttpAsyncClient httpClient;
   private Map<String, String> additionalHeaders = new ConcurrentHashMap<>();
 
-  public ControllerTransport(Optional<SSLFactory> sslFactory) {
+  public ControllerTransport(Optional<SSLFactory> sslFactory, String token) {
     this.httpClient = HttpAsyncClients.custom()
         .setDefaultRequestConfig(this.REQUEST_CONFIG)
         .setSSLStrategy(sslFactory.isPresent() ? new SSLIOSessionStrategy(sslFactory.get().getSSLContext()) : null)
         .build();
     this.httpClient.start();
-  }
-
-  /**
-   * Add additional headers to the request, for instance Authentication headers.
-   */
-  public ControllerTransport addHeaders(Map<String, String> headers) {
-    additionalHeaders.putAll(headers);
-    return this;
+    if (token != null && !token.isEmpty()) {
+      this.additionalHeaders.put("Authorization", "Bearer " + token);
+    }
   }
 
   public static ObjectMapper getObjectMapper() {

@@ -101,6 +101,10 @@ public class VeniceControllerMultiClusterConfig {
     return getCommonConfig().getSslFactoryClassName();
   }
 
+  public String getToken() {
+    return getCommonConfig().getToken();
+  }
+
   public boolean isDisableParentRequestTopicForStreamPushes() {
     return getCommonConfig().isDisableParentRequestTopicForStreamPushes();
   }

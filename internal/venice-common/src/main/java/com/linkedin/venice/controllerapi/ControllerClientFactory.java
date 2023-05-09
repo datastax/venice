@@ -14,10 +14,11 @@ public class ControllerClientFactory {
   public static ControllerClient getControllerClient(
       String clusterName,
       String discoveryUrls,
-      Optional<SSLFactory> sslFactory) {
+      Optional<SSLFactory> sslFactory,
+      String token) {
     final String clientIdentifier = clusterName + discoveryUrls;
     return SHARED_OBJECT_FACTORY.get(clientIdentifier, () -> {
-      ControllerClient client = new ControllerClient(clusterName, discoveryUrls, sslFactory);
+      ControllerClient client = new ControllerClient(clusterName, discoveryUrls, sslFactory, token);
       CONTROLLER_CLIENT_TO_IDENTIFIER_MAP.put(client, clientIdentifier);
       return client;
     }, client -> {
