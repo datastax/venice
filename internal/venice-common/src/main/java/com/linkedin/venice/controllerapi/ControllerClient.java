@@ -89,8 +89,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
@@ -113,6 +115,8 @@ public class ControllerClient implements Closeable {
   private final VeniceJsonSerializer<Version> versionVeniceJsonSerializer = new VeniceJsonSerializer<>(Version.class);
   private String leaderControllerUrl;
   private final List<String> controllerDiscoveryUrls;
+
+  private final Map<String, String> additionalHeaders = new ConcurrentHashMap<>();
 
   public ControllerClient(String clusterName, String discoveryUrls) {
     this(clusterName, discoveryUrls, Optional.empty());
@@ -166,12 +170,21 @@ public class ControllerClient implements Closeable {
     ControllerClientFactory.release(this);
   }
 
+  /**
+   * Add additional headers to the request, for instance Authentication headers.
+   * @param header the header name
+   * @param value the value
+   */
+  public void addHeader(String header, String value) {
+    additionalHeaders.put(header, value);
+  }
+
   protected String discoverLeaderController() {
     List<String> urls = new ArrayList<>(this.controllerDiscoveryUrls);
     Collections.shuffle(urls);
 
     Exception lastException = null;
-    try (ControllerTransport transport = new ControllerTransport(sslFactory)) {
+    try (ControllerTransport transport = new ControllerTransport(sslFactory).addHeaders(additionalHeaders)) {
       for (String url: urls) {
         try {
           String leaderControllerUrl =
@@ -953,7 +966,7 @@ public class ControllerClient implements Closeable {
 
   public ClusterStaleDataAuditResponse getClusterStaleStores(String clusterName, String parentControllerUrl) {
     QueryParams params = newParams().add(CLUSTER, clusterName);
-    try (ControllerTransport transport = new ControllerTransport(sslFactory)) {
+    try (ControllerTransport transport = new ControllerTransport(sslFactory).addHeaders(additionalHeaders)) {
       return transport.request(
           parentControllerUrl,
           ControllerRoute.GET_STALE_STORES_IN_CLUSTER,
@@ -1203,7 +1216,7 @@ public class ControllerClient implements Closeable {
       byte[] data) {
     Exception lastException = null;
     boolean logErrorMessage = true;
-    try (ControllerTransport transport = new ControllerTransport(sslFactory)) {
+    try (ControllerTransport transport = new ControllerTransport(sslFactory).addHeaders(additionalHeaders)) {
       for (int attempt = 1; attempt <= maxAttempts; ++attempt) {
         try {
           return transport.request(getLeaderControllerUrl(), route, params, responseType, timeoutMs, data);

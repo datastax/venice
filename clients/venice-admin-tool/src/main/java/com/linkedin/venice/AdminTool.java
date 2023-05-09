@@ -138,7 +138,6 @@ public class AdminTool {
   private static final String SUCCESS = "success";
 
   private static final PubSubTopicRepository PUB_SUB_TOPIC_REPOSITORY = new PubSubTopicRepository();
-
   private static ControllerClient controllerClient;
   private static Optional<SSLFactory> sslFactory = Optional.empty();
   private static final Map<String, Map<String, ControllerClient>> clusterControllerClientPerColoMap = new HashMap<>();
@@ -196,6 +195,10 @@ public class AdminTool {
 
       if (cmd.hasOption(Arg.FLAT_JSON.toString())) {
         jsonWriter = ObjectMapperFactory.getInstance().writer();
+      }
+
+      if (Arrays.asList(foundCommand.getOptionalArgs()).contains(Arg.TOKEN)) {
+        controllerClient.addHeader("Authorization", "Bearer " + getOptionalArgument(cmd, Arg.TOKEN, ""));
       }
 
       switch (foundCommand) {
