@@ -1,5 +1,7 @@
 package com.linkedin.venice.authorization;
 
+import com.linkedin.venice.utils.VeniceProperties;
+import java.io.Closeable;
 import java.security.cert.X509Certificate;
 
 
@@ -22,7 +24,14 @@ import java.security.cert.X509Certificate;
  *   {@link #clearResource(Resource)}
  * }
  */
-public interface AuthorizerService {
+public interface AuthorizerService extends Closeable {
+  /**
+   * Perform any initialization tasks.
+   * @param veniceProperties
+   */
+  public default void initialise(VeniceProperties veniceProperties) throws Exception {
+  }
+
   /**
    * Check if the principal has the permission to perform the method on the resource. Implementation should define how to handle
    * duplicate/conflicting ACE entries present for the resource and also how to handle presence of no AceEntries for a resource.
@@ -122,6 +131,10 @@ public interface AuthorizerService {
    */
   public default boolean isSuperUser(Principal principal, String storeName) {
     return false;
+  }
+
+  @Override
+  public default void close() {
   }
 
 }

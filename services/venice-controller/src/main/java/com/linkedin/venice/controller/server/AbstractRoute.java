@@ -14,6 +14,7 @@ import com.linkedin.venice.authorization.Resource;
 import com.linkedin.venice.exceptions.VeniceException;
 import java.security.cert.X509Certificate;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -278,7 +279,8 @@ public class AbstractRoute {
 
     @Override
     public String toString() {
-      return request.toString();
+      return "Request {" + request.requestMethod() + ", " + request.pathInfo() + "?" + request.queryString()
+          + request.headers().stream().map(h -> h + ":" + request.headers(h)).collect(Collectors.joining()) + "}";
     }
   }
 }

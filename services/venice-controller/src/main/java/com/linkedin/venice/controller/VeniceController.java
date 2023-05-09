@@ -2,6 +2,7 @@ package com.linkedin.venice.controller;
 
 import static com.linkedin.venice.ConfigKeys.ZOOKEEPER_ADDRESS;
 import static com.linkedin.venice.authentication.AuthenticationServiceUtils.buildAuthenticationService;
+import static com.linkedin.venice.authorization.AuthorizerServiceUtils.buildAuthorizerService;
 
 import com.linkedin.d2.balancer.D2Client;
 import com.linkedin.d2.balancer.D2ClientBuilder;
@@ -269,6 +270,7 @@ public class VeniceController {
     Utils.closeQuietlyWithErrorLogged(secureAdminServer);
     Utils.closeQuietlyWithErrorLogged(controllerService);
     authenticationService.ifPresent(Utils::closeQuietlyWithErrorLogged);
+    authorizerService.ifPresent(Utils::closeQuietlyWithErrorLogged);
   }
 
   /**
@@ -304,12 +306,13 @@ public class VeniceController {
         new D2ClientBuilder().setZkHosts(controllerProps.getString(ZOOKEEPER_ADDRESS)).setIsSSLEnabled(false).build();
 
     Optional<AuthenticationService> authenticationService = buildAuthenticationService(controllerProps);
+    Optional<AuthorizerService> authorizerService = buildAuthorizerService(controllerProps);
     D2ClientUtils.startClient(d2Client);
     VeniceController controller = new VeniceController(
         Arrays.asList(new VeniceProperties[] { controllerProps }),
         new ArrayList<>(),
         authenticationService,
-        Optional.empty(),
+        authorizerService,
         d2Client);
     controller.start();
     addShutdownHook(controller, d2Client);
