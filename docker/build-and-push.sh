@@ -1,6 +1,4 @@
-CURRENTDIR=$(dirname "$0")
-
-pushd $CURRENTDIR/..
+cd ../
 ./gradlew shadowJar
 cd docker
 
@@ -27,7 +25,7 @@ cp ../services/venice-router/build/libs/venice-router-all.jar venice-router/
 targets=(venice-controller venice-server venice-router venice-client)
 
 for target in ${targets[@]}; do
-    docker buildx build --load --platform linux/amd64 -t "$repository/$target:$version" -t "$repository/$target:latest-dev" $target
+    docker buildx build --load --platform linux/amd64 -t "$repository/$target:$version" $target
 done
 
 rm -f venice-client/venice-push-job-all.jar
@@ -38,5 +36,6 @@ rm -f venice-controller/venice-controller-all.jar
 rm -f venice-router/venice-router-all.jar
 rm */*.py */*yaml
 
-popd
-
+for target in ${targets[@]}; do
+   docker push $repository/$target:$version
+done
