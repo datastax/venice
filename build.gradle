@@ -133,6 +133,16 @@ publishing {
         }
       }
     }
+    maven {
+      name 'DatastaxJFrog'
+      url 'https://repo.aws.dsinternal.org/artifactory/datastax-public-releases-local/'
+      if (System.getenv('DS_ARTIFACTORY_USERNAME') != null && System.getenv('DS_ARTIFACTORY_PWD') != null) {
+        credentials {
+          username System.getenv('DS_ARTIFACTORY_USERNAME')
+          password System.getenv('DS_ARTIFACTORY_PWD')
+        }
+      }
+    }
   }
 }
 
