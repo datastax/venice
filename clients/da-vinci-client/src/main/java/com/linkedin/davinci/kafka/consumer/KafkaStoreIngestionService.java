@@ -18,7 +18,6 @@ import static com.linkedin.venice.ConfigKeys.KAFKA_MAX_PARTITION_FETCH_BYTES_CON
 import static com.linkedin.venice.ConfigKeys.KAFKA_MAX_POLL_RECORDS_CONFIG;
 import static com.linkedin.venice.kafka.TopicManager.DEFAULT_KAFKA_MIN_LOG_COMPACTION_LAG_MS;
 import static com.linkedin.venice.kafka.TopicManager.DEFAULT_KAFKA_OPERATION_TIMEOUT_MS;
-import static com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerConfig.KAFKA_CONFIG_PREFIX;
 import static java.lang.Thread.currentThread;
 import static java.lang.Thread.sleep;
 import static org.apache.kafka.common.config.SslConfigs.SSL_CONTEXT_PROVIDER_CLASS_CONFIG;
@@ -73,6 +72,7 @@ import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pubsub.adapter.kafka.admin.ApacheKafkaAdminAdapterFactory;
 import com.linkedin.venice.pubsub.adapter.kafka.consumer.ApacheKafkaConsumerAdapterFactory;
 import com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdapterFactory;
+import com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerConfig;
 import com.linkedin.venice.pubsub.adapter.kafka.producer.SharedKafkaProducerAdapterFactory;
 import com.linkedin.venice.pubsub.api.PubSubClientsFactory;
 import com.linkedin.venice.pubsub.api.PubSubProducerAdapterFactory;
@@ -1008,8 +1008,8 @@ public class KafkaStoreIngestionService extends AbstractVeniceService implements
    * @return
    */
   private Properties getCommonKafkaConsumerProperties(VeniceServerConfig serverConfig) {
-    Properties kafkaConsumerProperties =
-        serverConfig.getClusterProperties().clipAndFilterNamespace(KAFKA_CONFIG_PREFIX).toProperties();
+    Properties kafkaConsumerProperties = new Properties();
+    ApacheKafkaProducerConfig.copyKafkaSASLProperties(serverConfig.getClusterProperties(), kafkaConsumerProperties);
     kafkaConsumerProperties.setProperty(KAFKA_BOOTSTRAP_SERVERS, serverConfig.getKafkaBootstrapServers());
     kafkaConsumerProperties.setProperty(KAFKA_AUTO_OFFSET_RESET_CONFIG, "earliest");
     // Venice is persisting offset in local offset db.
@@ -1045,8 +1045,9 @@ public class KafkaStoreIngestionService extends AbstractVeniceService implements
       serverConfig = new VeniceServerConfig(new VeniceProperties(clonedProperties), serverConfig.getKafkaClusterMap());
     }
 
-    Properties properties =
-        serverConfig.getClusterProperties().clipAndFilterNamespace(KAFKA_CONFIG_PREFIX).toProperties();
+    VeniceProperties clusterProperties = serverConfig.getClusterProperties();
+    Properties properties = new Properties();
+    ApacheKafkaProducerConfig.copyKafkaSASLProperties(key -> clusterProperties.getString(key, ""), properties);
     kafkaBootstrapUrls = serverConfig.getKafkaBootstrapServers();
     String resolvedKafkaUrl = serverConfig.getKafkaClusterUrlResolver().apply(kafkaBootstrapUrls);
     if (resolvedKafkaUrl != null) {

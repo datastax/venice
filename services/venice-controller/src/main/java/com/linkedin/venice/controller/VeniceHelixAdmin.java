@@ -2,7 +2,6 @@ package com.linkedin.venice.controller;
 
 import static com.linkedin.venice.ConfigConstants.DEFAULT_TOPIC_DELETION_STATUS_POLL_INTERVAL_MS;
 import static com.linkedin.venice.ConfigKeys.KAFKA_BOOTSTRAP_SERVERS;
-import static com.linkedin.venice.ConfigKeys.KAFKA_CONFIG_PREFIX;
 import static com.linkedin.venice.ConfigKeys.KAFKA_MIN_IN_SYNC_REPLICAS;
 import static com.linkedin.venice.ConfigKeys.KAFKA_REPLICATION_FACTOR;
 import static com.linkedin.venice.ConfigKeys.PUSH_STATUS_STORE_DERIVED_SCHEMA_ID;
@@ -150,6 +149,7 @@ import com.linkedin.venice.pubsub.PubSubTopicConfiguration;
 import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pubsub.adapter.kafka.admin.ApacheKafkaAdminAdapterFactory;
 import com.linkedin.venice.pubsub.adapter.kafka.consumer.ApacheKafkaConsumerAdapterFactory;
+import com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerConfig;
 import com.linkedin.venice.pubsub.api.PubSubConsumerAdapterFactory;
 import com.linkedin.venice.pubsub.api.PubSubTopic;
 import com.linkedin.venice.pushmonitor.ExecutionStatus;
@@ -669,7 +669,8 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
     }
     controllerConfig = new VeniceControllerConfig(new VeniceProperties(clonedProperties));
 
-    Properties properties = controllerConfig.getProps().clipAndFilterNamespace(KAFKA_CONFIG_PREFIX).toProperties();
+    Properties properties = new Properties();
+    ApacheKafkaProducerConfig.copyKafkaSASLProperties(key -> originalPros.getString(key, ""), properties);
     if (KafkaSSLUtils.isKafkaSSLProtocol(controllerConfig.getKafkaSecurityProtocol())) {
       Optional<SSLConfig> sslConfig = controllerConfig.getSslConfig();
       if (!sslConfig.isPresent()) {
