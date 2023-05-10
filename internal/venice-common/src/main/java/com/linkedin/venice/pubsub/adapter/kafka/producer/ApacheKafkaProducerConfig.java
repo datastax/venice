@@ -235,6 +235,16 @@ public class ApacheKafkaProducerConfig {
         properties.put("kafka.sasl.mechanism", saslMechanism);
       }
     }
+
+    String securityProtocol = configuration.getProperty("kafka.security.protocol", "");
+    if (securityProtocol != null && !securityProtocol.isEmpty()) {
+      if (stripPrefix) {
+        properties.put("sasl.security.protocol", securityProtocol);
+      } else {
+        properties.put("kafka.security.protocol", securityProtocol);
+      }
+    }
+
     LOGGER.info(
         "copyKafkaSASLProperties (stripPrefix={}) from {} to {}",
         stripPrefix,
