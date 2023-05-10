@@ -49,7 +49,11 @@ public class ApacheKafkaConsumerConfig {
     consumerProperties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, 1024 * 1024);
     consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
     consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
-    LOGGER.info("Created ApacheKafkaConsumerConfig from {} -> {}", veniceProperties, consumerProperties);
+    LOGGER.info(
+        "Created ApacheKafkaConsumerConfig from {} -> {}",
+        veniceProperties,
+        consumerProperties,
+        new Exception().fillInStackTrace());
   }
 
   public Properties getConsumerProperties() {
