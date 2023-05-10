@@ -4,6 +4,8 @@ import static com.linkedin.venice.ConfigKeys.CONTROLLER_AUTO_MATERIALIZE_DAVINCI
 import static com.linkedin.venice.ConfigKeys.CONTROLLER_AUTO_MATERIALIZE_META_SYSTEM_STORE;
 import static com.linkedin.venice.ConfigKeys.LOCAL_REGION_NAME;
 import static com.linkedin.venice.integration.utils.VeniceClusterWrapperConstants.DEFAULT_DELAYED_TO_REBALANCE_MS;
+import static com.linkedin.venice.integration.utils.VeniceClusterWrapperConstants.DEFAULT_MAX_NUMBER_OF_PARTITIONS;
+import static com.linkedin.venice.integration.utils.VeniceClusterWrapperConstants.DEFAULT_NUMBER_OF_PARTITIONS;
 import static com.linkedin.venice.integration.utils.VeniceClusterWrapperConstants.DEFAULT_PARTITION_SIZE_BYTES;
 import static com.linkedin.venice.integration.utils.VeniceClusterWrapperConstants.DEFAULT_REPLICATION_FACTOR;
 import static com.linkedin.venice.integration.utils.VeniceControllerWrapper.DEFAULT_PARENT_DATA_CENTER_REGION_NAME;
@@ -23,6 +25,8 @@ public class VeniceControllerCreateOptions {
   private final boolean d2Enabled;
   private final int replicationFactor;
   private final int partitionSize;
+  private final int numberOfPartitions;
+  private final int maxNumberOfPartitions;
   private final int minActiveReplica;
   private final long rebalanceDelayMs;
   private final String[] clusterNames;
@@ -41,6 +45,8 @@ public class VeniceControllerCreateOptions {
     d2Enabled = builder.d2Enabled;
     replicationFactor = builder.replicationFactor;
     partitionSize = builder.partitionSize;
+    numberOfPartitions = builder.numberOfPartitions;
+    maxNumberOfPartitions = builder.maxNumberOfPartitions;
     minActiveReplica = builder.minActiveReplica;
     rebalanceDelayMs = builder.rebalanceDelayMs;
     clusterNames = builder.clusterNames;
@@ -72,6 +78,12 @@ public class VeniceControllerCreateOptions {
         .append(", ")
         .append("partitionSize:")
         .append(partitionSize)
+        .append(", ")
+        .append("numberOfPartitions:")
+        .append(numberOfPartitions)
+        .append(", ")
+        .append("maxNumberOfPartitions:")
+        .append(maxNumberOfPartitions)
         .append(", ")
         .append("minActiveReplica:")
         .append(minActiveReplica)
@@ -135,6 +147,14 @@ public class VeniceControllerCreateOptions {
     return partitionSize;
   }
 
+  public int getNumberOfPartitions() {
+    return numberOfPartitions;
+  }
+
+  public int getMaxNumberOfPartitions() {
+    return maxNumberOfPartitions;
+  }
+
   public int getMinActiveReplica() {
     return minActiveReplica;
   }
@@ -192,6 +212,8 @@ public class VeniceControllerCreateOptions {
     private boolean isMinActiveReplicaSet = false;
     private int replicationFactor = DEFAULT_REPLICATION_FACTOR;
     private int partitionSize = DEFAULT_PARTITION_SIZE_BYTES;
+    private int numberOfPartitions = DEFAULT_NUMBER_OF_PARTITIONS;
+    private int maxNumberOfPartitions = DEFAULT_MAX_NUMBER_OF_PARTITIONS;
     private int minActiveReplica;
     private long rebalanceDelayMs = DEFAULT_DELAYED_TO_REBALANCE_MS;
     private Map<String, String> clusterToD2 = null;
@@ -230,6 +252,16 @@ public class VeniceControllerCreateOptions {
 
     public Builder partitionSize(int partitionSize) {
       this.partitionSize = partitionSize;
+      return this;
+    }
+
+    public Builder numberOfPartitions(int numberOfPartitions) {
+      this.numberOfPartitions = numberOfPartitions;
+      return this;
+    }
+
+    public Builder maxNumberOfPartitions(int maxNumberOfPartitions) {
+      this.maxNumberOfPartitions = maxNumberOfPartitions;
       return this;
     }
 
