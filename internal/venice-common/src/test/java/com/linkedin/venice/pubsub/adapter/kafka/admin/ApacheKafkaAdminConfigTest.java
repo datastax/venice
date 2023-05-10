@@ -30,9 +30,9 @@ public class ApacheKafkaAdminConfigTest {
     properties.put("cluster.name", "cluster");
     properties.put("zookeeper.address", "localhost:2181");
     properties.put("kafka.bootstrap.servers", "localhost:9092");
-    properties.put("sasl.jaas.config", SASL_JAAS_CONFIG);
-    properties.put("sasl.mechanism", SASL_MECHANISM);
-    properties.put("security.protocol", securityProtocol.name);
+    properties.put("kafka.sasl.jaas.config", SASL_JAAS_CONFIG);
+    properties.put("kafka.sasl.mechanism", SASL_MECHANISM);
+    properties.put("kafka.security.protocol", securityProtocol.name);
     if (securityProtocol.name.contains("SSL")) {
       properties.put("ssl.truststore.location", "-");
       properties.put("ssl.truststore.password", "");

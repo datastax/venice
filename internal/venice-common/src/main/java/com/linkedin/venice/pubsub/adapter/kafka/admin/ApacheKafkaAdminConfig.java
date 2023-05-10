@@ -21,7 +21,8 @@ public class ApacheKafkaAdminConfig {
 
   public ApacheKafkaAdminConfig(VeniceProperties veniceProperties) {
     this.brokerAddress = ApacheKafkaProducerConfig.getPubsubBrokerAddress(veniceProperties);
-    this.adminProperties = veniceProperties.toProperties();
+    this.adminProperties =
+        veniceProperties.clipAndFilterNamespace(ApacheKafkaProducerConfig.KAFKA_CONFIG_PREFIX).toProperties();
     this.adminProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerAddress);
     // Setup ssl config if needed.
     if (KafkaSSLUtils.validateAndCopyKafkaSSLConfig(veniceProperties, this.adminProperties)) {
