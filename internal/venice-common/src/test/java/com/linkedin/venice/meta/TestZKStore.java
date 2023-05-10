@@ -339,8 +339,8 @@ public class TestZKStore {
 
   @Test
   public void testValidStoreNames() {
-    List<String> valid = Arrays.asList("foo", "Bar", "foo_bar", "foo-bar", "f00Bar");
-    List<String> invalid = Arrays.asList("foo bar", "foo.bar", " foo", ".bar", "!", "@", "#", "$", "%");
+    List<String> valid = Arrays.asList("foo", "Bar", "foo_bar", "foo.bar", ".bar", "foo-bar", "f00Bar");
+    List<String> invalid = Arrays.asList("foo bar", " foo", "!", "@", "#", "$", "%");
     for (String name: valid) {
       Assert.assertTrue(Store.isValidStoreName(name));
     }
