@@ -239,7 +239,7 @@ public class ApacheKafkaProducerConfig {
     String securityProtocol = configuration.getProperty("kafka.security.protocol", "");
     if (securityProtocol != null && !securityProtocol.isEmpty()) {
       if (stripPrefix) {
-        properties.put("sasl.security.protocol", securityProtocol);
+        properties.put("security.protocol", securityProtocol);
       } else {
         properties.put("kafka.security.protocol", securityProtocol);
       }
