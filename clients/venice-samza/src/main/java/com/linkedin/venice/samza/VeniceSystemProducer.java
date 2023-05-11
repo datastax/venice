@@ -161,6 +161,8 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
   private Optional<RouterBasedPushMonitor> pushMonitor = Optional.empty();
   private Optional<RouterBasedHybridStoreQuotaMonitor> hybridStoreQuotaMonitor = Optional.empty();
 
+  private Map<String, String> additionalWriterConfigs = new HashMap<>();
+
   @Deprecated
   public VeniceSystemProducer(
       String primaryControllerColoD2ZKHost,
@@ -320,6 +322,10 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
     this.time = time;
   }
 
+  public void applyAdditionalWriterConfigs(Map<String, String> additionalWriterConfigs) {
+    this.additionalWriterConfigs.putAll(additionalWriterConfigs);
+  }
+
   public void setRouterUrl(String routerUrl) {
     this.routerUrl = Optional.of(routerUrl);
   }
@@ -404,7 +410,10 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
 
   // trickery for unit testing
   VeniceWriter<byte[], byte[], byte[]> constructVeniceWriter(Properties properties, VeniceWriterOptions writerOptions) {
-    return new VeniceWriterFactory(properties).createVeniceWriter(writerOptions);
+    Properties finalWriterConfigs = new Properties();
+    finalWriterConfigs.putAll(properties);
+    finalWriterConfigs.putAll(additionalWriterConfigs);
+    return new VeniceWriterFactory(finalWriterConfigs).createVeniceWriter(writerOptions);
   }
 
   @Override
