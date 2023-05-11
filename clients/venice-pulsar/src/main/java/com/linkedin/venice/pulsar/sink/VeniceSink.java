@@ -1,7 +1,6 @@
 package com.linkedin.venice.pulsar.sink;
 
 import static com.linkedin.venice.CommonConfigKeys.SSL_ENABLED;
-import static com.linkedin.venice.ConfigKeys.VALIDATE_VENICE_INTERNAL_SCHEMA_VERSION;
 import static com.linkedin.venice.samza.VeniceSystemFactory.DEPLOYMENT_ID;
 import static com.linkedin.venice.samza.VeniceSystemFactory.DOT;
 import static com.linkedin.venice.samza.VeniceSystemFactory.SYSTEMS_PREFIX;
@@ -226,13 +225,12 @@ public class VeniceSink implements Sink<GenericObject> {
     }
   }
 
-  private static Map<String, String> getConfig(VeniceSinkConfig veniceCfg, String systemName) {
+  private Map<String, String> getConfig(VeniceSinkConfig veniceCfg, String systemName) {
     Map<String, String> config = new HashMap<>();
     String configPrefix = SYSTEMS_PREFIX + systemName + DOT;
     config.put(configPrefix + VENICE_PUSH_TYPE, Version.PushType.INCREMENTAL.toString());
     config.put(configPrefix + VENICE_STORE, veniceCfg.getStoreName());
     config.put(configPrefix + VENICE_AGGREGATE, "false");
-    config.put(VALIDATE_VENICE_INTERNAL_SCHEMA_VERSION, "false");
 
     config.put("venice.discover.urls", veniceCfg.getVeniceDiscoveryUrl());
     config.put(VENICE_CONTROLLER_DISCOVERY_URL, veniceCfg.getVeniceDiscoveryUrl());
@@ -244,6 +242,12 @@ public class VeniceSink implements Sink<GenericObject> {
     }
     config.put("kafka.sasl.mechanism", veniceCfg.getKafkaSaslMechanism());
     config.put("kafka.security.protocol", veniceCfg.getKafkaSecurityProtocol());
+
+    if (this.config.getWriterConfig() != null && !this.config.getWriterConfig().isEmpty()) {
+      LOGGER.info("Additional WriterConfig: {}", this.config.getWriterConfig());
+      config.putAll(this.config.getWriterConfig());
+    }
+
     LOGGER.info("CONFIG: {}", config);
     return config;
   }
