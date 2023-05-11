@@ -481,6 +481,7 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
         LOGGER.info("Start verifying the latest protocols at runtime are valid in Venice backend.");
         // Discover the D2 service name for the system store
         String kafkaMessageEnvelopSchemaSysStore = AvroProtocolDefinition.KAFKA_MESSAGE_ENVELOPE.getSystemStoreName();
+        // TODO: token ?
         D2ServiceDiscoveryResponse sysStoreDiscoveryResponse = (D2ServiceDiscoveryResponse) controllerRequestWithRetry(
             () -> D2ControllerClient.discoverCluster(
                 primaryControllerColoD2Client,
@@ -488,7 +489,7 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
                 kafkaMessageEnvelopSchemaSysStore),
             2);
         ClientConfig clientConfigForKafkaMessageEnvelopeSchemaReader =
-            ClientConfig.defaultGenericClientConfig(kafkaMessageEnvelopSchemaSysStore);
+            ClientConfig.defaultGenericClientConfig(kafkaMessageEnvelopSchemaSysStore).setToken(token);
         clientConfigForKafkaMessageEnvelopeSchemaReader.setD2ServiceName(sysStoreDiscoveryResponse.getD2Service());
         clientConfigForKafkaMessageEnvelopeSchemaReader.setD2Client(childColoD2Client);
         SchemaReader kafkaMessageEnvelopeSchemaReader =
@@ -504,6 +505,7 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
           primaryControllerColoD2Client,
           sslFactory);
       transportClient = new D2TransportClient(discoveryResponse.getD2Service(), childColoD2Client);
+      // TODO: token ?
     }
 
     // Request all the necessary info from Venice Controller
