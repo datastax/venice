@@ -1,0 +1,39 @@
+name: DataStax Venice release
+
+on:
+  push:
+    tags:
+      - 'ds-*'
+
+jobs:
+  build:
+    name: Build docker
+    runs-on: ubuntu-latest
+    if: github.repository == 'datastax/venice'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Docker images
+        run: |
+          ./gradlew assemble --stacktrace --continue --no-daemon -DforkEvery=1 -DmaxParallelForks=1 -x test
+          cd docker
+          ./build-venice-docker-images.sh datastax ${{ github.ref_name }}
+
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "clients/venice-pulsar/build/libs/*nar"
+          token: ${{ secrets.GITHUB_TOKEN }}
