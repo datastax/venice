@@ -102,7 +102,6 @@ public abstract class KafkaConsumerService extends AbstractVeniceService {
       final boolean isKafkaConsumerOffsetCollectionEnabled) {
     this.kafkaUrl = consumerProperties.getProperty(KAFKA_BOOTSTRAP_SERVERS);
     this.LOGGER = LogManager.getLogger(KafkaConsumerService.class.getSimpleName() + " [" + kafkaUrl + "]");
-    LOGGER.info("create {} with consumerProperties: {}", getClass().getSimpleName(), consumerProperties);
 
     // Initialize consumers and consumerExecutor
     consumerExecutor = Executors.newFixedThreadPool(

@@ -682,7 +682,6 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
     } else {
       properties.setProperty(KAFKA_BOOTSTRAP_SERVERS, controllerConfig.getKafkaBootstrapServers());
     }
-    LOGGER.info("getPubSubSSLPropertiesFromControllerConfig: {}", properties, new Exception().fillInStackTrace());
     return new VeniceProperties(properties);
   }
 

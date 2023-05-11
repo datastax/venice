@@ -69,7 +69,6 @@ public class ApacheKafkaProducerConfig {
     } else {
       LOGGER.info("Will initialize a non-SSL Kafka producer");
     }
-    LOGGER.info("Kafka producer properties: {}", this.producerProperties);
   }
 
   public Properties getProducerProperties() {
@@ -244,12 +243,5 @@ public class ApacheKafkaProducerConfig {
         properties.put("kafka.security.protocol", securityProtocol);
       }
     }
-
-    LOGGER.info(
-        "copyKafkaSASLProperties (stripPrefix={}) from {} to {}",
-        stripPrefix,
-        configuration,
-        properties,
-        new Exception("").fillInStackTrace());
   }
 }
