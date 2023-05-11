@@ -6,7 +6,7 @@ on:
       - 'ds-*'
 
 jobs:
-  build:
+  ds-release:
     name: Build docker
     runs-on: ubuntu-latest
     if: github.repository == 'datastax/venice'
