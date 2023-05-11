@@ -244,11 +244,5 @@ public class ApacheKafkaProducerConfig {
       }
     }
 
-    LOGGER.info(
-        "copyKafkaSASLProperties skipPrefix={} configuration={} " + "finalProperties={}",
-        stripPrefix,
-        configuration,
-        properties,
-        new Exception().fillInStackTrace());
   }
 }

@@ -1046,7 +1046,6 @@ public class KafkaStoreIngestionService extends AbstractVeniceService implements
       serverConfig = new VeniceServerConfig(new VeniceProperties(clonedProperties), serverConfig.getKafkaClusterMap());
     }
     VeniceProperties clusterProperties = serverConfig.getClusterProperties();
-    LOGGER.info("Using cluster properties: {}", clusterProperties);
     Properties properties = new Properties();
     ApacheKafkaProducerConfig.copyKafkaSASLProperties(clusterProperties, properties, false);
     kafkaBootstrapUrls = serverConfig.getKafkaBootstrapServers();

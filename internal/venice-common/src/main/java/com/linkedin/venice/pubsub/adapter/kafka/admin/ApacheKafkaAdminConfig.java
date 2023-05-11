@@ -38,10 +38,6 @@ public class ApacheKafkaAdminConfig {
           DEFAULT_KAFKA_ADMIN_GET_TOPIC_CONFIG_RETRY_IN_SECONDS);
     }
 
-    LOGGER.info(
-        "Created ApacheKafkaAdminConfig with properties: {}",
-        adminProperties,
-        new Exception().fillInStackTrace());
   }
 
   public Properties getAdminProperties() {
