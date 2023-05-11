@@ -1,6 +1,7 @@
 package com.linkedin.venice.pulsar.sink;
 
 import static com.linkedin.venice.CommonConfigKeys.SSL_ENABLED;
+import static com.linkedin.venice.ConfigKeys.VALIDATE_VENICE_INTERNAL_SCHEMA_VERSION;
 import static com.linkedin.venice.samza.VeniceSystemFactory.DEPLOYMENT_ID;
 import static com.linkedin.venice.samza.VeniceSystemFactory.DOT;
 import static com.linkedin.venice.samza.VeniceSystemFactory.SYSTEMS_PREFIX;
@@ -231,6 +232,8 @@ public class VeniceSink implements Sink<GenericObject> {
     config.put(configPrefix + VENICE_PUSH_TYPE, Version.PushType.INCREMENTAL.toString());
     config.put(configPrefix + VENICE_STORE, veniceCfg.getStoreName());
     config.put(configPrefix + VENICE_AGGREGATE, "false");
+    config.put(VALIDATE_VENICE_INTERNAL_SCHEMA_VERSION, "false");
+
     config.put("venice.discover.urls", veniceCfg.getVeniceDiscoveryUrl());
     config.put(VENICE_CONTROLLER_DISCOVERY_URL, veniceCfg.getVeniceDiscoveryUrl());
     config.put(VENICE_ROUTER_URL, veniceCfg.getVeniceRouterUrl());

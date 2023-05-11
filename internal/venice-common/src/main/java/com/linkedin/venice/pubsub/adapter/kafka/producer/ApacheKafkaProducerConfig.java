@@ -243,5 +243,12 @@ public class ApacheKafkaProducerConfig {
         properties.put("kafka.security.protocol", securityProtocol);
       }
     }
+
+    LOGGER.info(
+        "copyKafkaSASLProperties skipPrefix={} configuration={} " + "finalProperties={}",
+        stripPrefix,
+        configuration,
+        properties,
+        new Exception().fillInStackTrace());
   }
 }
