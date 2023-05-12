@@ -38,7 +38,6 @@ public class VeniceClusterCreateOptions {
   private final boolean enableAutoJoinAllowlist;
   private final boolean sslToStorageNodes;
   private final boolean sslToKafka;
-  private final boolean isKafkaOpenSSLEnabled;
   private final boolean forkServer;
   private final AuthenticationService authenticationService;
   private final AuthorizerService authorizerService;
@@ -66,7 +65,6 @@ public class VeniceClusterCreateOptions {
     this.enableAutoJoinAllowlist = builder.enableAutoJoinAllowlist;
     this.sslToStorageNodes = builder.sslToStorageNodes;
     this.sslToKafka = builder.sslToKafka;
-    this.isKafkaOpenSSLEnabled = builder.isKafkaOpenSSLEnabled;
     this.forkServer = builder.forkServer;
     this.extraProperties = builder.extraProperties;
     this.kafkaClusterMap = builder.kafkaClusterMap;
@@ -148,10 +146,6 @@ public class VeniceClusterCreateOptions {
     return sslToKafka;
   }
 
-  public boolean isKafkaOpenSSLEnabled() {
-    return isKafkaOpenSSLEnabled;
-  }
-
   public boolean isForkServer() {
     return forkServer;
   }
@@ -231,9 +225,6 @@ public class VeniceClusterCreateOptions {
         .append("sslToKafka:")
         .append(sslToKafka)
         .append(", ")
-        .append("isKafkaOpenSSLEnabled:")
-        .append(isKafkaOpenSSLEnabled)
-        .append(", ")
         .append("forkServer:")
         .append(forkServer)
         .append(", ")
@@ -276,7 +267,6 @@ public class VeniceClusterCreateOptions {
     private boolean enableAutoJoinAllowlist;
     private boolean sslToStorageNodes = DEFAULT_SSL_TO_STORAGE_NODES;
     private boolean sslToKafka = DEFAULT_SSL_TO_KAFKA;
-    private boolean isKafkaOpenSSLEnabled = false;
     private boolean forkServer;
     private boolean isMinActiveReplicaSet = false;
     private Properties extraProperties;
@@ -374,11 +364,6 @@ public class VeniceClusterCreateOptions {
 
     public Builder sslToKafka(boolean sslToKafka) {
       this.sslToKafka = sslToKafka;
-      return this;
-    }
-
-    public Builder isKafkaOpenSSLEnabled(boolean isKafkaOpenSSLEnabled) {
-      this.isKafkaOpenSSLEnabled = isKafkaOpenSSLEnabled;
       return this;
     }
 
