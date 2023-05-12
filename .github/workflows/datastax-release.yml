@@ -42,5 +42,5 @@ jobs:
 
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "clients/venice-pulsar/build/libs/*nar"
+          artifacts: "clients/venice-pulsar/build/libs/*nar,services/venice-standalone/build/libs/venice-standalone-all.jar,clients/venice-admin-tool/build/libs/venice-admin-tool-all.jar,clients/venice-thin-client/build/libs/venice-thin-client-all.jar"
           token: ${{ secrets.GITHUB_TOKEN }}
