@@ -62,6 +62,8 @@ public class ClientConfig<T extends SpecificRecord> {
   // Test settings
   private Time time = new SystemTime();
 
+  private String token;
+
   public static ClientConfig defaultGenericClientConfig(String storeName) {
     return new ClientConfig(storeName);
   }
@@ -106,6 +108,7 @@ public class ClientConfig<T extends SpecificRecord> {
         // Security settings
         .setHttps(config.isHttps())
         .setSslFactory(config.getSslFactory())
+        .setToken(config.getToken())
 
         .setForceClusterDiscoveryAtStartTime(config.isForceClusterDiscoveryAtStartTime())
         .setProjectionFieldValidationEnabled(config.isProjectionFieldValidationEnabled())
@@ -251,6 +254,15 @@ public class ClientConfig<T extends SpecificRecord> {
 
   public ClientConfig<T> setSslFactory(SSLFactory sslEngineComponentFactory) {
     this.sslFactory = sslEngineComponentFactory;
+    return this;
+  }
+
+  public String getToken() {
+    return token;
+  }
+
+  public ClientConfig<T> setToken(String token) {
+    this.token = token;
     return this;
   }
 

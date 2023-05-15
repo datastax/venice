@@ -3,21 +3,31 @@ package com.linkedin.venice.acl.handler;
 import com.linkedin.venice.acl.AclCreationDeletionListener;
 import com.linkedin.venice.acl.AclException;
 import com.linkedin.venice.acl.DynamicAccessController;
+import com.linkedin.venice.authentication.AuthenticationService;
+import com.linkedin.venice.authorization.AuthorizerService;
+import com.linkedin.venice.authorization.Method;
+import com.linkedin.venice.authorization.Principal;
+import com.linkedin.venice.authorization.Resource;
 import com.linkedin.venice.exceptions.VeniceNoStoreException;
 import com.linkedin.venice.meta.QueryAction;
 import com.linkedin.venice.meta.ReadOnlyStoreRepository;
 import com.linkedin.venice.meta.Store;
 import com.linkedin.venice.utils.NettyUtils;
 import com.linkedin.venice.utils.SslUtils;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.ssl.SslHandler;
+import io.netty.util.AttributeKey;
 import io.netty.util.ReferenceCountUtil;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import org.apache.logging.log4j.LogManager;
@@ -32,13 +42,26 @@ public class StoreAclHandler extends SimpleChannelInboundHandler<HttpRequest> {
   private static final Logger LOGGER = LogManager.getLogger(StoreAclHandler.class);
 
   private final ReadOnlyStoreRepository metadataRepository;
-  private final DynamicAccessController accessController;
+  private final Optional<DynamicAccessController> accessController;
 
-  public StoreAclHandler(DynamicAccessController accessController, ReadOnlyStoreRepository metadataRepository) {
+  private final Optional<AuthenticationService> authenticationService;
+  private final Optional<AuthorizerService> authorizerService;
+
+  public StoreAclHandler(
+      Optional<DynamicAccessController> accessController,
+      Optional<AuthenticationService> authenticationService,
+      Optional<AuthorizerService> authorizerService,
+      ReadOnlyStoreRepository metadataRepository) {
     this.metadataRepository = metadataRepository;
+
     this.accessController = accessController
-        .init(metadataRepository.getAllStores().stream().map(Store::getName).collect(Collectors.toList()));
-    this.metadataRepository.registerStoreDataChangedListener(new AclCreationDeletionListener(accessController));
+        .map(a -> a.init(metadataRepository.getAllStores().stream().map(Store::getName).collect(Collectors.toList())));
+
+    this.authenticationService = authenticationService;
+    this.authorizerService = authorizerService;
+    if (accessController.isPresent()) {
+      this.metadataRepository.registerStoreDataChangedListener(new AclCreationDeletionListener(accessController.get()));
+    }
   }
 
   /**
@@ -56,8 +79,15 @@ public class StoreAclHandler extends SimpleChannelInboundHandler<HttpRequest> {
        */
       sslHandler = ctx.channel().parent().pipeline().get(SslHandler.class);
     }
+    if (sslHandler == null) {
+      return null;
+    }
     return SslUtils.getX509Certificate(sslHandler.engine().getSession().getPeerCertificates()[0]);
   }
+
+  private static AttributeKey<Principal> PRINCIPAL_ATTR = AttributeKey.valueOf("principal");
+  private static AttributeKey<String> FIRST_AUTHORIZATION_ATTRIBUTE =
+      AttributeKey.valueOf("first_authorization_attribute");
 
   /**
    * Verify if client has permission to access.
@@ -69,6 +99,7 @@ public class StoreAclHandler extends SimpleChannelInboundHandler<HttpRequest> {
   @Override
   public void channelRead0(ChannelHandlerContext ctx, HttpRequest req) throws SSLPeerUnverifiedException {
     X509Certificate clientCert = extractClientCert(ctx);
+    Principal principal = getPrincipal(ctx, req, clientCert);
 
     String uri = req.uri();
     // Parse resource type and store name
@@ -101,7 +132,30 @@ public class StoreAclHandler extends SimpleChannelInboundHandler<HttpRequest> {
         ctx.fireChannelRead(req);
       } else {
         try {
-          if (accessController.hasAccess(clientCert, storeName, method)) {
+          if (!accessController.isPresent() && !authenticationService.isPresent()) {
+            // no security, proceed
+            ReferenceCountUtil.retain(req);
+            ctx.fireChannelRead(req);
+          } else if (authorizerService.isPresent()) {
+            boolean granted = true;
+            if (authorizerService.isPresent()) {
+              granted = authorizerService.get().canAccess(Method.valueOf(method), new Resource(storeName), principal);
+              if (!granted) {
+                LOGGER.info("Principal {} is denied to access {} {}", principal, method, storeName);
+              }
+            }
+            if (!granted) {
+              NettyUtils.setupResponseAndFlush(
+                  HttpResponseStatus.UNAUTHORIZED,
+                  "Authentication required".getBytes(StandardCharsets.UTF_8),
+                  false,
+                  ctx);
+            } else {
+              // Client has permission. Proceed
+              ReferenceCountUtil.retain(req);
+              ctx.fireChannelRead(req);
+            }
+          } else if ((accessController.get().hasAccess(clientCert, storeName, method))) {
             // Client has permission. Proceed
             ReferenceCountUtil.retain(req);
             ctx.fireChannelRead(req);
@@ -115,7 +169,8 @@ public class StoreAclHandler extends SimpleChannelInboundHandler<HttpRequest> {
             String client = ctx.channel().remoteAddress().toString(); // ip and port
             String errLine = String.format("%s requested %s %s", client, method, req.uri());
 
-            if (!accessController.isFailOpen() && !accessController.hasAcl(storeName)) { // short circuit, order matters
+            if (!accessController.get().isFailOpen() && !accessController.get().hasAcl(storeName)) { // short circuit,
+                                                                                                     // order matters
               // Case A
               // Conditions:
               // 0. (outside) Store exists and is being access controlled. AND,
@@ -137,7 +192,11 @@ public class StoreAclHandler extends SimpleChannelInboundHandler<HttpRequest> {
                       .collect(Collectors.toList()));
               LOGGER.debug(
                   "Access-controlled stores: {}",
-                  () -> accessController.getAccessControlledResources().stream().sorted().collect(Collectors.toList()));
+                  () -> accessController.get()
+                      .getAccessControlledResources()
+                      .stream()
+                      .sorted()
+                      .collect(Collectors.toList()));
               NettyUtils.setupResponseAndFlush(
                   HttpResponseStatus.UNAUTHORIZED,
                   ("ACL not found!\n" + "Either it has not been created, or can not be loaded.\n"
@@ -177,7 +236,7 @@ public class StoreAclHandler extends SimpleChannelInboundHandler<HttpRequest> {
           String client = ctx.channel().remoteAddress().toString(); // ip and port
           String errLine = String.format("%s requested %s %s", client, method, req.uri());
 
-          if (accessController.isFailOpen()) {
+          if (accessController.get().isFailOpen()) {
             LOGGER.warn("Exception occurred! Access granted: {} {}", errLine, e);
             ReferenceCountUtil.retain(req);
             ctx.fireChannelRead(req);
@@ -196,5 +255,38 @@ public class StoreAclHandler extends SimpleChannelInboundHandler<HttpRequest> {
           false,
           ctx);
     }
+  }
+
+  private Principal getPrincipal(ChannelHandlerContext ctx, HttpRequest req, X509Certificate clientCert) {
+    Principal principal = null;
+    if (authenticationService.isPresent()) {
+      // here we are assuming that the Principal depends on the Authorization header
+      // this is not valid for all authentication methods, but it is valid for the ones we support
+      Channel channel = ctx.channel();
+      String authorizationHeader = req.headers().get("Authorization", "");
+      if (channel.hasAttr(PRINCIPAL_ATTR) && channel.hasAttr(FIRST_AUTHORIZATION_ATTRIBUTE)) {
+        String firstAuthorizeHeader = channel.attr(FIRST_AUTHORIZATION_ATTRIBUTE).get();
+        if (Objects.equals(firstAuthorizeHeader, authorizationHeader)) {
+          principal = channel.attr(PRINCIPAL_ATTR).get();
+        }
+      }
+      if (principal == null) {
+        principal =
+            authenticationService.get().getPrincipalFromHttpRequest(new AuthenticationService.HttpRequestAccessor() {
+              @Override
+              public String getHeader(String headerName) {
+                return req.headers().get(headerName, "");
+              }
+
+              @Override
+              public X509Certificate getCertificate() {
+                return clientCert;
+              }
+            });
+        channel.attr(PRINCIPAL_ATTR).set(principal);
+        channel.attr(FIRST_AUTHORIZATION_ATTRIBUTE).set(authorizationHeader);
+      }
+    }
+    return principal;
   }
 }

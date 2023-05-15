@@ -68,6 +68,8 @@ public class ClientConfig<K, V, T extends SpecificRecord> {
   private final D2Client d2Client;
   private final String clusterDiscoveryD2Service;
 
+  private final String token;
+
   private ClientConfig(
       String storeName,
       Client r2Client,
@@ -95,13 +97,15 @@ public class ClientConfig<K, V, T extends SpecificRecord> {
       boolean isVsonStore,
       boolean isRequestBasedMetadata,
       D2Client d2Client,
-      String clusterDiscoveryD2Service) {
+      String clusterDiscoveryD2Service,
+      String token) {
     if (storeName == null || storeName.isEmpty()) {
       throw new VeniceClientException("storeName param shouldn't be empty");
     }
     if (r2Client == null) {
       throw new VeniceClientException("r2Client param shouldn't be null");
     }
+    this.token = token;
     this.r2Client = r2Client;
     this.storeName = storeName;
     this.statsPrefix = (statsPrefix == null ? "" : statsPrefix);
@@ -310,6 +314,10 @@ public class ClientConfig<K, V, T extends SpecificRecord> {
     return this.clusterDiscoveryD2Service;
   }
 
+  public String getToken() {
+    return token;
+  }
+
   public static class ClientConfigBuilder<K, V, T extends SpecificRecord> {
     private MetricsRepository metricsRepository;
     private String statsPrefix = "";
@@ -354,6 +362,12 @@ public class ClientConfig<K, V, T extends SpecificRecord> {
     private boolean isRequestBasedMetadata = false;
     private D2Client d2Client;
     private String clusterDiscoveryD2Service;
+    private String token;
+
+    public ClientConfigBuilder<K, V, T> setToken(String token) {
+      this.token = token;
+      return this;
+    }
 
     public ClientConfigBuilder<K, V, T> setStoreName(String storeName) {
       this.storeName = storeName;
@@ -501,6 +515,7 @@ public class ClientConfig<K, V, T extends SpecificRecord> {
 
     public ClientConfigBuilder<K, V, T> clone() {
       return new ClientConfigBuilder().setStoreName(storeName)
+          .setToken(token)
           .setR2Client(r2Client)
           .setMetricsRepository(metricsRepository)
           .setStatsPrefix(statsPrefix)
@@ -557,7 +572,8 @@ public class ClientConfig<K, V, T extends SpecificRecord> {
           isVsonStore,
           isRequestBasedMetadata,
           d2Client,
-          clusterDiscoveryD2Service);
+          clusterDiscoveryD2Service,
+          token);
     }
   }
 }

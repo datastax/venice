@@ -31,6 +31,8 @@ import com.linkedin.venice.compression.CompressionStrategy;
 import com.linkedin.venice.schema.SchemaData;
 import com.linkedin.venice.security.SSLFactory;
 import java.net.URI;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -54,6 +56,7 @@ public class D2TransportClient extends TransportClient {
   // start/shutdown a d2 client if is is private.
   private final boolean privateD2Client;
   private String d2ServiceName;
+  private String token;
 
   /**
    * Construct by an existing D2Client (such as from the pegasus-d2-client-default-cmpt).
@@ -89,6 +92,7 @@ public class D2TransportClient extends TransportClient {
     this.d2ServiceName = d2ServiceName;
     this.d2Client = builder.build();
     this.privateD2Client = true;
+    this.token = clientConfig.getToken();
 
     D2ClientUtils.startClient(d2Client);
   }
@@ -250,11 +254,26 @@ public class D2TransportClient extends TransportClient {
 
   private RestRequest getRestGetRequest(String requestPath, Map<String, String> headers) {
     String requestUrl = getD2RequestUrl(requestPath);
+    headers = injectSecurityHeaders(headers);
     return D2ClientUtils.createD2GetRequest(requestUrl, headers);
+  }
+
+  private Map<String, String> injectSecurityHeaders(Map<String, String> headers) {
+    if (token != null & !token.isEmpty()) {
+      if (headers == null) {
+        return Collections.singletonMap("Authorization", "Bearer " + token);
+      } else {
+        Map<String, String> copy = new HashMap<>(headers);
+        copy.put("Authorization", "Bearer " + token);
+        return copy;
+      }
+    }
+    return headers;
   }
 
   private RestRequest getRestPostRequest(String requestPath, Map<String, String> headers, byte[] body) {
     String requestUrl = getD2RequestUrl(requestPath);
+    headers = injectSecurityHeaders(headers);
     return D2ClientUtils.createD2PostRequest(requestUrl, headers, body);
   }
 

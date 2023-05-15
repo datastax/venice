@@ -1,6 +1,7 @@
 package com.linkedin.venice.fastclient;
 
 import static org.mockito.Mockito.mock;
+import static org.testng.Assert.assertEquals;
 
 import com.linkedin.r2.transport.common.Client;
 import com.linkedin.venice.client.exceptions.VeniceClientException;
@@ -87,5 +88,13 @@ public class ClientConfigTest {
         .setLongTailRetryEnabledForSingleGet(true)
         .setLongTailRetryThresholdForSingleGetInMicroSeconds(1000)
         .build();
+  }
+
+  @Test
+  public void testClientWithToken() {
+    ClientConfig.ClientConfigBuilder clientConfigBuilder =
+        getClientConfigWithMinimumRequiredInputs().setToken("test_token");
+
+    assertEquals("test_token", clientConfigBuilder.build().getToken());
   }
 }

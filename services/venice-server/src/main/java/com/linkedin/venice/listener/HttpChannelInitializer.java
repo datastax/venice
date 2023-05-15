@@ -6,6 +6,8 @@ import com.linkedin.alpini.netty4.ssl.SslInitializer;
 import com.linkedin.davinci.config.VeniceServerConfig;
 import com.linkedin.venice.acl.DynamicAccessController;
 import com.linkedin.venice.acl.StaticAccessController;
+import com.linkedin.venice.authentication.AuthenticationService;
+import com.linkedin.venice.authorization.AuthorizerService;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.helix.HelixCustomizedViewOfflinePushRepository;
 import com.linkedin.venice.meta.ReadOnlyStoreRepository;
@@ -59,6 +61,8 @@ public class HttpChannelInitializer extends ChannelInitializer<SocketChannel> {
       VeniceServerConfig serverConfig,
       Optional<StaticAccessController> routerAccessController,
       Optional<DynamicAccessController> storeAccessController,
+      Optional<AuthenticationService> authenticationService,
+      Optional<AuthorizerService> authorizerService,
       StorageReadRequestsHandler requestHandler) {
     this.serverConfig = serverConfig;
     this.requestHandler = requestHandler;
@@ -91,8 +95,13 @@ public class HttpChannelInitializer extends ChannelInitializer<SocketChannel> {
 
     this.sslFactory = sslFactory;
     this.sslHandshakeExecutor = sslHandshakeExecutor;
-    this.storeAclHandler = storeAccessController.isPresent()
-        ? Optional.of(new ServerStoreAclHandler(storeAccessController.get(), storeMetadataRepository))
+    this.storeAclHandler = storeAccessController.isPresent() || authenticationService.isPresent()
+        ? Optional.of(
+            new ServerStoreAclHandler(
+                storeAccessController,
+                authenticationService,
+                authorizerService,
+                storeMetadataRepository))
         : Optional.empty();
     /**
      * If the store-level access handler is present, we don't want to fail fast if the access gets denied by {@link ServerAclHandler}.

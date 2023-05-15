@@ -12,6 +12,10 @@ import com.linkedin.alpini.router.impl.Router;
 import com.linkedin.venice.ConfigKeys;
 import com.linkedin.venice.acl.DynamicAccessController;
 import com.linkedin.venice.acl.handler.StoreAclHandler;
+import com.linkedin.venice.authentication.AuthenticationService;
+import com.linkedin.venice.authentication.AuthenticationServiceUtils;
+import com.linkedin.venice.authorization.AuthorizerService;
+import com.linkedin.venice.authorization.AuthorizerServiceUtils;
 import com.linkedin.venice.compression.CompressorFactory;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.helix.HelixAdapterSerializer;
@@ -119,6 +123,8 @@ public class RouterServer extends AbstractVeniceService {
   private final MetricsRepository metricsRepository;
   private final Optional<SSLFactory> sslFactory;
   private final Optional<DynamicAccessController> accessController;
+  private final Optional<AuthenticationService> authenticationService;
+  private final Optional<AuthorizerService> authorizerService;
 
   private final VeniceRouterConfig config;
 
@@ -202,7 +208,16 @@ public class RouterServer extends AbstractVeniceService {
     LOGGER.info("IO worker count: {}", props.getInt(ConfigKeys.ROUTER_IO_WORKER_COUNT));
 
     Optional<SSLFactory> sslFactory = Optional.of(SslUtils.getVeniceLocalSslFactory());
-    RouterServer server = new RouterServer(props, new ArrayList<>(), Optional.empty(), sslFactory);
+    Optional<AuthenticationService> authenticationService =
+        AuthenticationServiceUtils.buildAuthenticationService(props);
+    Optional<AuthorizerService> authorizerService = AuthorizerServiceUtils.buildAuthorizerService(props);
+    RouterServer server = new RouterServer(
+        props,
+        new ArrayList<>(),
+        Optional.empty(),
+        authenticationService,
+        authorizerService,
+        sslFactory);
     server.start();
 
     Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -229,11 +244,15 @@ public class RouterServer extends AbstractVeniceService {
       VeniceProperties properties,
       List<ServiceDiscoveryAnnouncer> serviceDiscoveryAnnouncers,
       Optional<DynamicAccessController> accessController,
+      Optional<AuthenticationService> authenticationService,
+      Optional<AuthorizerService> authorizerService,
       Optional<SSLFactory> sslFactory) {
     this(
         properties,
         serviceDiscoveryAnnouncers,
         accessController,
+        authenticationService,
+        authorizerService,
         sslFactory,
         TehutiUtils.getMetricsRepository(ROUTER_SERVICE_NAME));
   }
@@ -247,9 +266,19 @@ public class RouterServer extends AbstractVeniceService {
       VeniceProperties properties,
       List<ServiceDiscoveryAnnouncer> serviceDiscoveryAnnouncers,
       Optional<DynamicAccessController> accessController,
+      Optional<AuthenticationService> authenticationService,
+      Optional<AuthorizerService> authorizerService,
       Optional<SSLFactory> sslFactory,
       MetricsRepository metricsRepository) {
-    this(properties, serviceDiscoveryAnnouncers, accessController, sslFactory, metricsRepository, true);
+    this(
+        properties,
+        serviceDiscoveryAnnouncers,
+        accessController,
+        authenticationService,
+        authorizerService,
+        sslFactory,
+        metricsRepository,
+        true);
 
     HelixReadOnlyZKSharedSystemStoreRepository readOnlyZKSharedSystemStoreRepository =
         new HelixReadOnlyZKSharedSystemStoreRepository(zkClient, adapter, config.getSystemSchemaClusterName());
@@ -307,6 +336,8 @@ public class RouterServer extends AbstractVeniceService {
       VeniceProperties properties,
       List<ServiceDiscoveryAnnouncer> serviceDiscoveryAnnouncers,
       Optional<DynamicAccessController> accessController,
+      Optional<AuthenticationService> authenticationService,
+      Optional<AuthorizerService> authorizerService,
       Optional<SSLFactory> sslFactory,
       MetricsRepository metricsRepository,
       boolean isCreateHelixManager) {
@@ -327,6 +358,8 @@ public class RouterServer extends AbstractVeniceService {
 
     this.serviceDiscoveryAnnouncers = serviceDiscoveryAnnouncers;
     this.accessController = accessController;
+    this.authenticationService = authenticationService;
+    this.authorizerService = authorizerService;
     this.sslFactory = sslFactory;
     verifySslOk();
   }
@@ -347,7 +380,15 @@ public class RouterServer extends AbstractVeniceService {
       List<ServiceDiscoveryAnnouncer> serviceDiscoveryAnnouncers,
       Optional<SSLFactory> sslFactory,
       HelixLiveInstanceMonitor liveInstanceMonitor) {
-    this(properties, serviceDiscoveryAnnouncers, Optional.empty(), sslFactory, new MetricsRepository(), false);
+    this(
+        properties,
+        serviceDiscoveryAnnouncers,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        sslFactory,
+        new MetricsRepository(),
+        false);
     this.routingDataRepository = routingDataRepository;
     this.hybridStoreQuotaRepository = hybridStoreQuotaRepository;
     this.metadataRepository = metadataRepository;
@@ -570,7 +611,14 @@ public class RouterServer extends AbstractVeniceService {
     AdminOperationsStats adminOperationsStats = new AdminOperationsStats(this.metricsRepository, "admin_stats", config);
     AdminOperationsHandler adminOperationsHandler =
         new AdminOperationsHandler(accessController.orElse(null), this, adminOperationsStats);
-
+    StoreAclHandler aclHandler = accessController.isPresent() || authenticationService.isPresent()
+        ? new StoreAclHandler(accessController, authenticationService, authorizerService, metadataRepository)
+        : null;
+    LOGGER.info(
+        "StoreAclHandler {} AuthenticationService {} AuthorizerService {}",
+        aclHandler,
+        authenticationService,
+        authorizerService);
     // TODO: deprecate non-ssl port
     if (!config.isEnforcingSecureOnly()) {
       router = Optional.of(
@@ -590,6 +638,9 @@ public class RouterServer extends AbstractVeniceService {
                 pipeline.addLast("VerifySslHandler", unsecureRouterSslVerificationHandler);
                 pipeline.addLast("MetadataHandler", metaDataHandler);
                 pipeline.addLast("AdminOperationsHandler", adminOperationsHandler);
+                if (authenticationService.isPresent()) {
+                  pipeline.addLast("StoreAclHandler", aclHandler);
+                }
                 addStreamingHandler(pipeline);
                 addOptionalChannelHandlersToPipeline(pipeline);
               })
@@ -599,8 +650,7 @@ public class RouterServer extends AbstractVeniceService {
     }
 
     RouterSslVerificationHandler routerSslVerificationHandler = new RouterSslVerificationHandler(securityStats);
-    StoreAclHandler aclHandler =
-        accessController.isPresent() ? new StoreAclHandler(accessController.get(), metadataRepository) : null;
+
     final SslInitializer sslInitializer;
     if (sslFactory.isPresent()) {
       sslInitializer = new SslInitializer(SslUtils.toAlpiniSSLFactory(sslFactory.get()), false);
@@ -669,15 +719,17 @@ public class RouterServer extends AbstractVeniceService {
                                                                                                          // compared
                                                                                                          // once per
                                                                                                          // request.
-        .beforeHttpRequestHandler(ChannelPipeline.class, accessController.isPresent() ? withAcl : withoutAcl) // Compare
-                                                                                                              // once
-                                                                                                              // per
-                                                                                                              // router.
-                                                                                                              // Previously
-                                                                                                              // compared
-                                                                                                              // once
-                                                                                                              // per
-                                                                                                              // request.
+        .beforeHttpRequestHandler(
+            ChannelPipeline.class,
+            accessController.isPresent() || authenticationService.isPresent() ? withAcl : withoutAcl) // Compare
+                                                                                                      // once
+                                                                                                      // per
+                                                                                                      // router.
+                                                                                                      // Previously
+                                                                                                      // compared
+                                                                                                      // once
+                                                                                                      // per
+                                                                                                      // request.
         .idleTimeout(3, TimeUnit.HOURS)
         .enableInboundHttp2(config.isHttp2InboundEnabled())
         .http2MaxConcurrentStreams(config.getHttp2MaxConcurrentStreams())
@@ -799,6 +851,12 @@ public class RouterServer extends AbstractVeniceService {
     }
     if (heartbeat != null) {
       heartbeat.stopInner();
+    }
+    if (authenticationService.isPresent()) {
+      Utils.closeQuietlyWithErrorLogged(authenticationService.get());
+    }
+    if (authenticationService.isPresent()) {
+      Utils.closeQuietlyWithErrorLogged(authenticationService.get());
     }
   }
 

@@ -95,6 +95,11 @@ public class VeniceSystemFactory implements SystemFactory, Serializable {
    */
   public static final String VENICE_PARENT_D2_ZK_HOSTS = "venice.parent.d2.zk.hosts";
 
+  /**
+   * JWT token authentication against Venice services.
+   */
+  public static final String VENICE_TOKEN = "venice.authentication.token";
+
   // D2 service name for local cluster
   public static final String VENICE_CHILD_CONTROLLER_D2_SERVICE = "venice.child.controller.d2.service";
   // D2 service name for parent cluster
@@ -374,6 +379,7 @@ public class VeniceSystemFactory implements SystemFactory, Serializable {
           SystemTime.INSTANCE);
       p.setRouterUrl(routerUrl);
       p.applyAdditionalWriterConfigs(config);
+      p.setToken(config.get(VENICE_TOKEN, null));
       return p;
     }
 
@@ -445,6 +451,7 @@ public class VeniceSystemFactory implements SystemFactory, Serializable {
         sslFactory,
         partitioners);
     systemProducer.applyAdditionalWriterConfigs(config);
+    systemProducer.setToken(config.get(VENICE_TOKEN, null));
     this.systemProducerStatues.computeIfAbsent(systemProducer, k -> Pair.create(true, false));
     return systemProducer;
   }

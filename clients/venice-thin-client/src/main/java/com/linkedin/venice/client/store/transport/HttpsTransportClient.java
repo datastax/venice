@@ -10,15 +10,16 @@ import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
 public class HttpsTransportClient extends HttpTransportClient {
   private SSLFactory sslFactory;
 
-  public HttpsTransportClient(String routerUrl, SSLFactory sslFactory) {
+  public HttpsTransportClient(String routerUrl, SSLFactory sslFactory, String token) {
     this(
         routerUrl,
-        HttpAsyncClients.custom().setSSLStrategy(new SSLIOSessionStrategy(sslFactory.getSSLContext())).build());
+        HttpAsyncClients.custom().setSSLStrategy(new SSLIOSessionStrategy(sslFactory.getSSLContext())).build(),
+        token);
     this.sslFactory = sslFactory;
   }
 
-  public HttpsTransportClient(String routerUrl, CloseableHttpAsyncClient client) {
-    super(routerUrl, client);
+  public HttpsTransportClient(String routerUrl, CloseableHttpAsyncClient client, String token) {
+    super(routerUrl, client, token);
     if (!routerUrl.startsWith(HTTPS)) {
       throw new VeniceException("Must use https url with HttpsTransportClient, found: " + routerUrl);
     }
@@ -30,6 +31,6 @@ public class HttpsTransportClient extends HttpTransportClient {
    */
   @Override
   public TransportClient getCopyIfNotUsableInCallback() {
-    return new HttpsTransportClient(routerUrl, sslFactory);
+    return new HttpsTransportClient(routerUrl, sslFactory, token);
   }
 }

@@ -2,6 +2,8 @@ package com.linkedin.venice.listener;
 
 import com.linkedin.venice.acl.DynamicAccessController;
 import com.linkedin.venice.acl.handler.StoreAclHandler;
+import com.linkedin.venice.authentication.AuthenticationService;
+import com.linkedin.venice.authorization.AuthorizerService;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.meta.ReadOnlyStoreRepository;
 import com.linkedin.venice.meta.Version;
@@ -25,8 +27,12 @@ import javax.net.ssl.SSLPeerUnverifiedException;
  * If both of them fail, the request will be rejected.
  */
 public class ServerStoreAclHandler extends StoreAclHandler {
-  public ServerStoreAclHandler(DynamicAccessController accessController, ReadOnlyStoreRepository metadataRepository) {
-    super(accessController, metadataRepository);
+  public ServerStoreAclHandler(
+      Optional<DynamicAccessController> accessController,
+      Optional<AuthenticationService> authenticationService,
+      Optional<AuthorizerService> authorizerService,
+      ReadOnlyStoreRepository metadataRepository) {
+    super(accessController, authenticationService, authorizerService, metadataRepository);
   }
 
   /**

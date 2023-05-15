@@ -46,7 +46,7 @@ public class TestTransportClient {
     d2TransportClient = new D2TransportClient(SERVICE_NAME, mockD2Client);
 
     mockHttpClient = mock(CloseableHttpAsyncClient.class);
-    httpTransportClient = new HttpTransportClient(HTTP_PREFIX + SERVICE_NAME, mockHttpClient);
+    httpTransportClient = new HttpTransportClient(HTTP_PREFIX + SERVICE_NAME, mockHttpClient, null);
   }
 
   @AfterMethod

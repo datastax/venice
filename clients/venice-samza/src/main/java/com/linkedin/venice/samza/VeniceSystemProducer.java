@@ -157,6 +157,8 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
   private Optional<String> discoveryUrl = Optional.empty();
   private Optional<String> routerUrl = Optional.empty();
 
+  private String token;
+
   private VeniceWriter<byte[], byte[], byte[]> veniceWriter = null;
   private Optional<RouterBasedPushMonitor> pushMonitor = Optional.empty();
   private Optional<RouterBasedHybridStoreQuotaMonitor> hybridStoreQuotaMonitor = Optional.empty();
@@ -326,6 +328,10 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
     this.additionalWriterConfigs.putAll(additionalWriterConfigs);
   }
 
+  public void setToken(String token) {
+    this.token = token;
+  }
+
   public void setRouterUrl(String routerUrl) {
     this.routerUrl = Optional.of(routerUrl);
   }
@@ -450,9 +456,9 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
       }
 
       if (sslFactory.isPresent()) {
-        transportClient = new HttpsTransportClient(discoveryUrl.get(), sslFactory.get());
+        transportClient = new HttpsTransportClient(discoveryUrl.get(), sslFactory.get(), token);
       } else {
-        transportClient = new HttpTransportClient(discoveryUrl.get());
+        transportClient = new HttpTransportClient(discoveryUrl.get(), token);
       }
     } else {
       this.primaryControllerColoD2Client = getStartedD2Client(primaryControllerColoD2ZKHost);

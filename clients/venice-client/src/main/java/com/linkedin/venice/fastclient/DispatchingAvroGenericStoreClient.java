@@ -66,10 +66,12 @@ public class DispatchingAvroGenericStoreClient<K, V> extends InternalAvroStoreCl
   // Key serializer
   private RecordSerializer<K> keySerializer;
   private RecordSerializer<MultiGetRouterRequestKeyV1> multiGetSerializer;
+  private final String token;
 
   public DispatchingAvroGenericStoreClient(StoreMetadata metadata, ClientConfig config) {
     this.metadata = metadata;
     this.config = config;
+    this.token = config.getToken();
     this.transportClient = new R2TransportClient(config.getR2Client());
 
     if (config.isSpeculativeQueryEnabled()) {
@@ -194,7 +196,13 @@ public class DispatchingAvroGenericStoreClient<K, V> extends InternalAvroStoreCl
       requestContext.routeRequestMap.put(route, routeRequestFuture);
       try {
         String url = route + uri;
-        CompletableFuture<TransportClientResponse> transportFuture = transportClient.get(url);
+        Map<String, String> headers;
+        if (token != null && !token.isEmpty()) {
+          headers = Collections.singletonMap("Authorization", "Bearer " + token);
+        } else {
+          headers = Collections.emptyMap();
+        }
+        CompletableFuture<TransportClientResponse> transportFuture = transportClient.get(url, headers);
         transportFutures.add(transportFuture);
         transportFuture.whenCompleteAsync((response, throwable) -> {
           if (throwable != null) {
@@ -440,6 +448,9 @@ public class DispatchingAvroGenericStoreClient<K, V> extends InternalAvroStoreCl
       headers.put(
           HttpConstants.VENICE_API_VERSION,
           Integer.toString(ReadAvroProtocolDefinition.MULTI_GET_ROUTER_REQUEST_V1.getProtocolVersion()));
+      if (token != null && !token.isEmpty()) {
+        headers.put("Authorization", "Bearer " + token);
+      }
       long tsBeforeSerialization = System.nanoTime();
       byte[] serializedKeys = serializeMultiGetRequest(requestContext.keysForRoutes(route));
       requestContext.recordRequestSerializationTime(route, getLatencyInNS(tsBeforeSerialization));
@@ -642,5 +653,4 @@ public class DispatchingAvroGenericStoreClient<K, V> extends InternalAvroStoreCl
   public Schema getLatestValueSchema() {
     return metadata.getLatestValueSchema();
   }
-
 }

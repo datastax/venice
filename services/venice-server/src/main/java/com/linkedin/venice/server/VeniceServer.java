@@ -675,6 +675,8 @@ public class VeniceServer {
         sslFactory,
         routerAccessController,
         storeAccessController,
+        Optional.empty(),
+        Optional.empty(),
         diskHealthService,
         compressorFactory,
         resourceReadUsageTracker);

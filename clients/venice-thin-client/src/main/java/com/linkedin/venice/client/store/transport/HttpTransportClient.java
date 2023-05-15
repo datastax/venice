@@ -35,14 +35,16 @@ public class HttpTransportClient extends TransportClient {
   // Example: 'http://router-host:80/'
   protected final String routerUrl;
   private final CloseableHttpAsyncClient httpClient;
+  protected final String token;
 
-  public HttpTransportClient(String routerUrl) {
-    this(routerUrl, HttpAsyncClients.createDefault());
+  public HttpTransportClient(String routerUrl, String token) {
+    this(routerUrl, HttpAsyncClients.createDefault(), token);
   }
 
-  public HttpTransportClient(String routerUrl, CloseableHttpAsyncClient httpClient) {
+  public HttpTransportClient(String routerUrl, CloseableHttpAsyncClient httpClient, String token) {
     this.routerUrl = ensureTrailingSlash(routerUrl);
     this.httpClient = httpClient;
+    this.token = token;
     httpClient.start();
   }
 
@@ -109,6 +111,9 @@ public class HttpTransportClient extends TransportClient {
     headers.forEach((K, V) -> {
       httpGet.addHeader(K, V);
     });
+    if (token != null && !token.isEmpty()) {
+      httpGet.addHeader("Authorization", "Bearer " + token);
+    }
     return httpGet;
   }
 
@@ -117,6 +122,9 @@ public class HttpTransportClient extends TransportClient {
     headers.forEach((K, V) -> {
       httpPost.setHeader(K, V);
     });
+    if (token != null && !token.isEmpty()) {
+      httpPost.addHeader("Authorization", "Bearer " + token);
+    }
     BasicHttpEntity entity = new BasicHttpEntity();
     entity.setContent(new ByteArrayInputStream(body));
     httpPost.setEntity(entity);
@@ -140,7 +148,7 @@ public class HttpTransportClient extends TransportClient {
    */
   @Override
   public TransportClient getCopyIfNotUsableInCallback() {
-    return new HttpTransportClient(routerUrl);
+    return new HttpTransportClient(routerUrl, token);
   }
 
   private static class HttpTransportClientCallback extends TransportClientCallback
