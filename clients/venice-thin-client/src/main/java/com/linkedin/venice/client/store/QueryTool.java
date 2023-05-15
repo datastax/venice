@@ -59,9 +59,6 @@ public class QueryTool {
       boolean isVsonStore,
       Optional<String> sslConfigFile,
       String token) throws Exception {
-    System.out.println(
-        "queryStoreForKey: store=" + store + ", keyString=" + keyString + ", url=" + url + ", isVsonStore="
-            + isVsonStore + ", sslConfigFile=" + sslConfigFile + ", token=" + token);
 
     SSLFactory factory = null;
     if (sslConfigFile.isPresent()) {
