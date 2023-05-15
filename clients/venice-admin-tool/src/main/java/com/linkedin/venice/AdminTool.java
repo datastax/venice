@@ -600,11 +600,12 @@ public class AdminTool {
   private static void queryStoreForKey(CommandLine cmd, String veniceUrl) throws Exception {
     String store = getRequiredArgument(cmd, Arg.STORE);
     String keyString = getRequiredArgument(cmd, Arg.KEY);
+    String token = getOptionalArgument(cmd, Arg.TOKEN);
     String sslConfigFileStr = getOptionalArgument(cmd, Arg.VENICE_CLIENT_SSL_CONFIG_FILE);
     boolean isVsonStore = Boolean.parseBoolean(getOptionalArgument(cmd, Arg.VSON_STORE, "false"));
     Optional<String> sslConfigFile =
         StringUtils.isEmpty(sslConfigFileStr) ? Optional.empty() : Optional.of(sslConfigFileStr);
-    printObject(QueryTool.queryStoreForKey(store, keyString, veniceUrl, isVsonStore, sslConfigFile));
+    printObject(QueryTool.queryStoreForKey(store, keyString, veniceUrl, isVsonStore, sslConfigFile, token));
   }
 
   private static void showSchemas(CommandLine cmd) {
