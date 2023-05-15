@@ -109,6 +109,7 @@ public class ControllerClient implements Closeable {
   private static final int QUERY_JOB_STATUS_TIMEOUT = 60 * Time.MS_PER_SECOND;
   private static final int DEFAULT_REQUEST_TIMEOUT_MS = 600 * Time.MS_PER_SECOND;
   private final Optional<SSLFactory> sslFactory;
+  private final String token;
   private final String clusterName;
   private final VeniceJsonSerializer<Version> versionVeniceJsonSerializer = new VeniceJsonSerializer<>(Version.class);
   private String leaderControllerUrl;
@@ -118,15 +119,20 @@ public class ControllerClient implements Closeable {
     this(clusterName, discoveryUrls, Optional.empty());
   }
 
+  public ControllerClient(String clusterName, String discoveryUrls, Optional<SSLFactory> sslFactory) {
+    this(clusterName, discoveryUrls, sslFactory, null);
+  }
+
   /**
    * @param discoveryUrls comma-delimited urls to find leader controller.
    */
-  public ControllerClient(String clusterName, String discoveryUrls, Optional<SSLFactory> sslFactory) {
+  public ControllerClient(String clusterName, String discoveryUrls, Optional<SSLFactory> sslFactory, String token) {
     if (StringUtils.isEmpty(discoveryUrls)) {
       throw new VeniceException("Controller discovery url list is empty: " + discoveryUrls);
     }
 
     this.sslFactory = sslFactory;
+    this.token = token;
     this.clusterName = clusterName;
     this.controllerDiscoveryUrls =
         Arrays.stream(discoveryUrls.split(",")).map(String::trim).collect(Collectors.toList());
@@ -140,19 +146,36 @@ public class ControllerClient implements Closeable {
       String discoveryUrls,
       Optional<SSLFactory> sslFactory,
       int retryAttempts) {
-    String clusterName = discoverCluster(discoveryUrls, storeName, sslFactory, retryAttempts).getCluster();
-    return constructClusterControllerClient(clusterName, discoveryUrls, sslFactory);
+    return discoverAndConstructControllerClient(storeName, discoveryUrls, sslFactory, retryAttempts, null);
+  }
+
+  public static ControllerClient discoverAndConstructControllerClient(
+      String storeName,
+      String discoveryUrls,
+      Optional<SSLFactory> sslFactory,
+      int retryAttempts,
+      String token) {
+    String clusterName = discoverCluster(discoveryUrls, storeName, sslFactory, retryAttempts, token).getCluster();
+    return constructClusterControllerClient(clusterName, discoveryUrls, sslFactory, token);
   }
 
   public static ControllerClient constructClusterControllerClient(String clusterName, String discoveryUrls) {
-    return constructClusterControllerClient(clusterName, discoveryUrls, Optional.empty());
+    return constructClusterControllerClient(clusterName, discoveryUrls, Optional.empty(), null);
   }
 
   public static ControllerClient constructClusterControllerClient(
       String clusterName,
       String discoveryUrls,
       Optional<SSLFactory> sslFactory) {
-    return ControllerClientFactory.getControllerClient(clusterName, discoveryUrls, sslFactory);
+    return ControllerClientFactory.getControllerClient(clusterName, discoveryUrls, sslFactory, null);
+  }
+
+  public static ControllerClient constructClusterControllerClient(
+      String clusterName,
+      String discoveryUrls,
+      Optional<SSLFactory> sslFactory,
+      String token) {
+    return ControllerClientFactory.getControllerClient(clusterName, discoveryUrls, sslFactory, token);
   }
 
   @Override
@@ -171,7 +194,7 @@ public class ControllerClient implements Closeable {
     Collections.shuffle(urls);
 
     Exception lastException = null;
-    try (ControllerTransport transport = new ControllerTransport(sslFactory)) {
+    try (ControllerTransport transport = new ControllerTransport(sslFactory, token)) {
       for (String url: urls) {
         try {
           String leaderControllerUrl =
@@ -953,7 +976,7 @@ public class ControllerClient implements Closeable {
 
   public ClusterStaleDataAuditResponse getClusterStaleStores(String clusterName, String parentControllerUrl) {
     QueryParams params = newParams().add(CLUSTER, clusterName);
-    try (ControllerTransport transport = new ControllerTransport(sslFactory)) {
+    try (ControllerTransport transport = new ControllerTransport(sslFactory, token)) {
       return transport.request(
           parentControllerUrl,
           ControllerRoute.GET_STALE_STORES_IN_CLUSTER,
@@ -991,7 +1014,8 @@ public class ControllerClient implements Closeable {
       String discoveryUrls,
       String storeName,
       Optional<SSLFactory> sslFactory,
-      int retryAttempts) {
+      int retryAttempts,
+      String token) {
     try (ControllerClient client = new ControllerClient("*", discoveryUrls, sslFactory)) {
       return retryableRequest(client, retryAttempts, c -> c.discoverCluster(storeName));
     }
@@ -1002,7 +1026,7 @@ public class ControllerClient implements Closeable {
     Collections.shuffle(urls);
 
     Exception lastException = null;
-    try (ControllerTransport transport = new ControllerTransport(sslFactory)) {
+    try (ControllerTransport transport = new ControllerTransport(sslFactory, token)) {
       for (String url: urls) {
         try {
           // Because the way to get parameter is different between controller and router, in order to support query
@@ -1203,7 +1227,7 @@ public class ControllerClient implements Closeable {
       byte[] data) {
     Exception lastException = null;
     boolean logErrorMessage = true;
-    try (ControllerTransport transport = new ControllerTransport(sslFactory)) {
+    try (ControllerTransport transport = new ControllerTransport(sslFactory, token)) {
       for (int attempt = 1; attempt <= maxAttempts; ++attempt) {
         try {
           return transport.request(getLeaderControllerUrl(), route, params, responseType, timeoutMs, data);

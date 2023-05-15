@@ -295,6 +295,8 @@ public class VeniceParentHelixAdmin implements Admin {
   private Time timer = new SystemTime();
   private Optional<SSLFactory> sslFactory = Optional.empty();
 
+  private String token;
+
   private final MigrationPushStrategyZKAccessor pushStrategyZKAccessor;
 
   private final PubSubTopicRepository pubSubTopicRepository;
@@ -419,6 +421,7 @@ public class VeniceParentHelixAdmin implements Admin {
         throw new VeniceException(e);
       }
     }
+    this.token = this.multiClusterConfigs.getToken();
     for (String cluster: this.multiClusterConfigs.getClusters()) {
       VeniceControllerConfig config = this.multiClusterConfigs.getControllerConfig(cluster);
       adminCommandExecutionTrackers.put(
@@ -698,8 +701,11 @@ public class VeniceParentHelixAdmin implements Admin {
     } else {
       // Verify that the store is indeed created by another controller. This is to prevent if the initial leader fails
       // or when the cluster happens to be leaderless for a bit.
-      try (ControllerClient controllerClient = ControllerClient
-          .constructClusterControllerClient(clusterName, getLeaderController(clusterName).getUrl(false), sslFactory)) {
+      try (ControllerClient controllerClient = ControllerClient.constructClusterControllerClient(
+          clusterName,
+          getLeaderController(clusterName).getUrl(false),
+          sslFactory,
+          token)) {
         StoreResponse storeResponse = controllerClient.getStore(storeName);
         if (storeResponse.isError()) {
           LOGGER.warn(
@@ -4951,7 +4957,7 @@ public class VeniceParentHelixAdmin implements Admin {
               }
               String url = controllerConfig.getChildControllerUrl(fabric);
               if (StringUtils.isNotBlank(url)) {
-                return ControllerClient.constructClusterControllerClient(clusterName, url, sslFactory);
+                return ControllerClient.constructClusterControllerClient(clusterName, url, sslFactory, token);
               }
               return null;
             });

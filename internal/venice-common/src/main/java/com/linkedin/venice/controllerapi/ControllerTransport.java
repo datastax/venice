@@ -10,7 +10,9 @@ import com.linkedin.venice.utils.ObjectMapperFactory;
 import com.linkedin.venice.utils.Time;
 import com.linkedin.venice.utils.Utils;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -49,13 +51,17 @@ public class ControllerTransport implements AutoCloseable {
   }
 
   private final CloseableHttpAsyncClient httpClient;
+  private Map<String, String> additionalHeaders = new ConcurrentHashMap<>();
 
-  public ControllerTransport(Optional<SSLFactory> sslFactory) {
+  public ControllerTransport(Optional<SSLFactory> sslFactory, String token) {
     this.httpClient = HttpAsyncClients.custom()
         .setDefaultRequestConfig(this.REQUEST_CONFIG)
         .setSSLStrategy(sslFactory.isPresent() ? new SSLIOSessionStrategy(sslFactory.get().getSSLContext()) : null)
         .build();
     this.httpClient.start();
+    if (token != null && !token.isEmpty()) {
+      this.additionalHeaders.put("Authorization", "Bearer " + token);
+    }
   }
 
   public static ObjectMapper getObjectMapper() {
@@ -162,6 +168,7 @@ public class ControllerTransport implements AutoCloseable {
       int timeoutMs) throws ExecutionException, TimeoutException {
     HttpResponse response;
     try {
+      additionalHeaders.forEach(request::addHeader);
       response = this.httpClient.execute(request, null).get(timeoutMs, TimeUnit.MILLISECONDS);
     } catch (ExecutionException | TimeoutException e) {
       throw e;

@@ -1,5 +1,6 @@
 package com.linkedin.venice.controller;
 
+import static com.linkedin.venice.CommonConfigKeys.AUTHENTICATION_TOKEN;
 import static com.linkedin.venice.CommonConfigKeys.SSL_FACTORY_CLASS_NAME;
 import static com.linkedin.venice.ConfigKeys.ADMIN_TOPIC_REPLICATION_FACTOR;
 import static com.linkedin.venice.ConfigKeys.CHILD_CLUSTER_ALLOWLIST;
@@ -130,6 +131,7 @@ public class VeniceControllerClusterConfig {
   // SSL related config
   Optional<SSLConfig> sslConfig;
   private String sslFactoryClassName;
+  private String token;
   private int refreshAttemptsForZkReconnect;
   private long refreshIntervalForZkReconnectInMs;
   private boolean enableOfflinePushSSLAllowlist;
@@ -384,6 +386,7 @@ public class VeniceControllerClusterConfig {
       sslConfig = Optional.empty();
     }
     sslFactoryClassName = props.getString(SSL_FACTORY_CLASS_NAME, DEFAULT_SSL_FACTORY_CLASS_NAME);
+    token = props.getString(AUTHENTICATION_TOKEN, "");
     refreshAttemptsForZkReconnect = props.getInt(REFRESH_ATTEMPTS_FOR_ZK_RECONNECT, 3);
     refreshIntervalForZkReconnectInMs =
         props.getLong(REFRESH_INTERVAL_FOR_ZK_RECONNECT_MS, java.util.concurrent.TimeUnit.SECONDS.toMillis(10));
@@ -565,6 +568,10 @@ public class VeniceControllerClusterConfig {
 
   public String getSslFactoryClassName() {
     return sslFactoryClassName;
+  }
+
+  public String getToken() {
+    return token;
   }
 
   public int getRefreshAttemptsForZkReconnect() {
