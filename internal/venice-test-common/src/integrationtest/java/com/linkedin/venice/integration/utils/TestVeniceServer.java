@@ -62,6 +62,8 @@ public class TestVeniceServer extends VeniceServer {
         sslFactory,
         routerAccessController,
         storeAccessController,
+          Optional.empty(),
+          Optional.empty(),
         diskHealthService,
         compressorFactory,
         resourceReadUsageTracker) {

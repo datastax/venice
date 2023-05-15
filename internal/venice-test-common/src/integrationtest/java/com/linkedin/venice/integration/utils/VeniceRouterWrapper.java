@@ -154,6 +154,8 @@ public class VeniceRouterWrapper extends ProcessWrapper implements MetricsAware 
           routerProperties,
           d2Servers,
           Optional.empty(),
+          Optional.empty(),
+          Optional.empty(),
           Optional.of(SslUtils.getVeniceLocalSslFactory()));
       return new VeniceRouterWrapper(
           regionName,
@@ -210,7 +212,8 @@ public class VeniceRouterWrapper extends ProcessWrapper implements MetricsAware 
     d2Servers.addAll(D2TestUtils.getD2Servers(zkAddress, clusterDiscoveryD2ClusterName, httpURI, httpsURI));
 
     service =
-        new RouterServer(properties, d2Servers, Optional.empty(), Optional.of(SslUtils.getVeniceLocalSslFactory()));
+        new RouterServer(properties, d2Servers, Optional.empty(), Optional.empty(),Optional.empty(),
+                Optional.of(SslUtils.getVeniceLocalSslFactory()));
   }
 
   @Override
