@@ -206,7 +206,8 @@ public class StoreAclHandlerTest {
       }
       // New metadataRepo mock and aclHandler every update since thenThrow cannot be re-mocked.
       metadataRepo = mock(HelixReadOnlyStoreRepository.class);
-      aclHandler = spy(new StoreAclHandler(Optional.of(accessController), Optional.empty(), Optional.empty(), metadataRepo));
+      aclHandler =
+          spy(new StoreAclHandler(Optional.of(accessController), Optional.empty(), Optional.empty(), metadataRepo));
       update();
       aclHandler.channelRead0(ctx, req);
     }
