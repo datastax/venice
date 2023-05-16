@@ -432,7 +432,7 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
     final TransportClient transportClient;
     if (discoveryUrl.isPresent()) {
       this.controllerClient =
-          ControllerClient.discoverAndConstructControllerClient(storeName, discoveryUrl.get(), sslFactory, 1);
+          ControllerClient.discoverAndConstructControllerClient(storeName, discoveryUrl.get(), sslFactory, 1, token);
 
       /**
        * Verify that the latest {@link com.linkedin.venice.serialization.avro.AvroProtocolDefinition#KAFKA_MESSAGE_ENVELOPE}
