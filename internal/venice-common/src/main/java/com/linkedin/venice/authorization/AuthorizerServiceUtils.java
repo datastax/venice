@@ -1,5 +1,7 @@
 package com.linkedin.venice.authorization;
 
+import static com.linkedin.venice.ConfigKeys.AUTHORIZER_SERVICE_CLASS;
+
 import com.linkedin.venice.utils.VeniceProperties;
 import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
@@ -13,7 +15,7 @@ public abstract class AuthorizerServiceUtils {
   }
 
   public static Optional<AuthorizerService> buildAuthorizerService(VeniceProperties veniceProperties) {
-    String className = veniceProperties.getString("authorizer.service.class", "");
+    String className = veniceProperties.getString(AUTHORIZER_SERVICE_CLASS, "");
     if (className.isEmpty()) {
       return Optional.empty();
     }

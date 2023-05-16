@@ -62,6 +62,11 @@ public class ControllerTransport implements AutoCloseable {
     if (token != null && !token.isEmpty()) {
       this.additionalHeaders.put("Authorization", "Bearer " + token);
     }
+    LOGGER.info(
+        "Created ControllerTransport with token: {} additionalHeaders {}",
+        token,
+        additionalHeaders,
+        new Exception().fillInStackTrace());
   }
 
   public static ObjectMapper getObjectMapper() {

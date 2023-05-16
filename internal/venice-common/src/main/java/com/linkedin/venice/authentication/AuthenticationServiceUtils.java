@@ -1,5 +1,7 @@
 package com.linkedin.venice.authentication;
 
+import static com.linkedin.venice.ConfigKeys.AUTHENTICATION_SERVICE_CLASS;
+
 import com.linkedin.venice.utils.VeniceProperties;
 import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
@@ -13,7 +15,7 @@ public abstract class AuthenticationServiceUtils {
   }
 
   public static Optional<AuthenticationService> buildAuthenticationService(VeniceProperties veniceProperties) {
-    String className = veniceProperties.getString("authentication.service.class", "");
+    String className = veniceProperties.getString(AUTHENTICATION_SERVICE_CLASS, "");
     if (className.isEmpty()) {
       return Optional.empty();
     }
@@ -27,6 +29,7 @@ public abstract class AuthenticationServiceUtils {
       authenticationService.initialise(veniceProperties);
       return Optional.of(authenticationService);
     } catch (Exception ex) {
+      LOGGER.error("Cannot load {}", className, ex);
       throw new IllegalStateException(ex);
     }
   }
