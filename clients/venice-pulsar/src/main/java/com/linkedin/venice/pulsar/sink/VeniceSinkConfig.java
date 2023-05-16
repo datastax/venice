@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.pulsar.io.common.IOConfigUtils;
@@ -42,6 +43,9 @@ public class VeniceSinkConfig implements Serializable {
 
   @FieldDoc(defaultValue = "", help = "The url of the Venice router")
   private String veniceRouterUrl = "http://venice-router:7777";
+
+  @FieldDoc(defaultValue = "", help = "JWT Token for Venice")
+  private String veniceToken = "";
 
   @FieldDoc(defaultValue = "", help = "SASL configuration for Kafka. See Kafka client documentation for details.")
   private String kafkaSaslConfig = "";
@@ -82,6 +86,11 @@ public class VeniceSinkConfig implements Serializable {
   @java.lang.SuppressWarnings("all")
   public String getVeniceRouterUrl() {
     return this.veniceRouterUrl;
+  }
+
+  @java.lang.SuppressWarnings("all")
+  public String getVeniceToken() {
+    return this.veniceToken;
   }
 
   @java.lang.SuppressWarnings("all")
@@ -168,6 +177,15 @@ public class VeniceSinkConfig implements Serializable {
    * @return {@code this}.
    */
   @java.lang.SuppressWarnings("all")
+  public VeniceSinkConfig setVeniceToken(String veniceToken) {
+    this.veniceToken = veniceToken;
+    return this;
+  }
+
+  /**
+   * @return {@code this}.
+   */
+  @java.lang.SuppressWarnings("all")
   public VeniceSinkConfig setStoreName(final String storeName) {
     this.storeName = storeName;
     return this;
@@ -196,89 +214,35 @@ public class VeniceSinkConfig implements Serializable {
     this.writerConfig = writerConfig;
   }
 
-  @java.lang.Override
-  @java.lang.SuppressWarnings("all")
-  public boolean equals(final java.lang.Object o) {
-    if (o == this)
+  @Override
+  public boolean equals(Object o) {
+    if (this == o)
       return true;
-    if (!(o instanceof VeniceSinkConfig))
+    if (o == null || getClass() != o.getClass())
       return false;
-    final VeniceSinkConfig other = (VeniceSinkConfig) o;
-    if (!other.canEqual((java.lang.Object) this))
-      return false;
-    if (this.getFlushIntervalMs() != other.getFlushIntervalMs())
-      return false;
-    if (this.getMaxNumberUnflushedRecords() != other.getMaxNumberUnflushedRecords())
-      return false;
-    final java.lang.Object this$veniceDiscoveryUrl = this.getVeniceDiscoveryUrl();
-    final java.lang.Object other$veniceDiscoveryUrl = other.getVeniceDiscoveryUrl();
-    if (this$veniceDiscoveryUrl == null
-        ? other$veniceDiscoveryUrl != null
-        : !this$veniceDiscoveryUrl.equals(other$veniceDiscoveryUrl))
-      return false;
-    final java.lang.Object this$veniceRouterUrl = this.getVeniceRouterUrl();
-    final java.lang.Object other$veniceRouterUrl = other.getVeniceRouterUrl();
-    if (this$veniceRouterUrl == null
-        ? other$veniceRouterUrl != null
-        : !this$veniceRouterUrl.equals(other$veniceRouterUrl))
-      return false;
-    final java.lang.Object this$writerConfig = this.getWriterConfig();
-    final java.lang.Object other$writerConfig = other.getWriterConfig();
-    if (this$writerConfig == null ? other$writerConfig != null : !this$writerConfig.equals(other$writerConfig))
-      return false;
-    final java.lang.Object this$kafkaSaslConfig = this.getKafkaSaslConfig();
-    final java.lang.Object other$kafkaSaslConfig = other.getKafkaSaslConfig();
-    if (this$kafkaSaslConfig == null
-        ? other$kafkaSaslConfig != null
-        : !this$kafkaSaslConfig.equals(other$kafkaSaslConfig))
-      return false;
-    final java.lang.Object this$kafkaSaslMechanism = this.getKafkaSaslMechanism();
-    final java.lang.Object other$kafkaSaslMechanism = other.getKafkaSaslMechanism();
-    if (this$kafkaSaslMechanism == null
-        ? other$kafkaSaslMechanism != null
-        : !this$kafkaSaslMechanism.equals(other$kafkaSaslMechanism))
-      return false;
-    final java.lang.Object this$kafkaSecurityProtocol = this.getKafkaSecurityProtocol();
-    final java.lang.Object other$kafkaSecurityProtocol = other.getKafkaSecurityProtocol();
-    if (this$kafkaSecurityProtocol == null
-        ? other$kafkaSecurityProtocol != null
-        : !this$kafkaSecurityProtocol.equals(other$kafkaSecurityProtocol))
-      return false;
-    final java.lang.Object this$storeName = this.getStoreName();
-    final java.lang.Object other$storeName = other.getStoreName();
-    if (this$storeName == null ? other$storeName != null : !this$storeName.equals(other$storeName))
-      return false;
-    return true;
+    VeniceSinkConfig that = (VeniceSinkConfig) o;
+    return flushIntervalMs == that.flushIntervalMs && maxNumberUnflushedRecords == that.maxNumberUnflushedRecords
+        && Objects.equals(veniceDiscoveryUrl, that.veniceDiscoveryUrl)
+        && Objects.equals(veniceRouterUrl, that.veniceRouterUrl) && Objects.equals(veniceToken, that.veniceToken)
+        && Objects.equals(kafkaSaslConfig, that.kafkaSaslConfig)
+        && Objects.equals(kafkaSaslMechanism, that.kafkaSaslMechanism)
+        && Objects.equals(kafkaSecurityProtocol, that.kafkaSecurityProtocol)
+        && Objects.equals(storeName, that.storeName) && Objects.equals(writerConfig, that.writerConfig);
   }
 
-  @java.lang.SuppressWarnings("all")
-  protected boolean canEqual(final java.lang.Object other) {
-    return other instanceof VeniceSinkConfig;
-  }
-
-  @java.lang.Override
-  @java.lang.SuppressWarnings("all")
+  @Override
   public int hashCode() {
-    final int PRIME = 59;
-    int result = 1;
-    final long $flushIntervalMs = this.getFlushIntervalMs();
-    result = result * PRIME + (int) ($flushIntervalMs >>> 32 ^ $flushIntervalMs);
-    result = result * PRIME + this.getMaxNumberUnflushedRecords();
-    final java.lang.Object $veniceDiscoveryUrl = this.getVeniceDiscoveryUrl();
-    result = result * PRIME + ($veniceDiscoveryUrl == null ? 43 : $veniceDiscoveryUrl.hashCode());
-    final java.lang.Object $veniceRouterUrl = this.getVeniceRouterUrl();
-    result = result * PRIME + ($veniceRouterUrl == null ? 43 : $veniceRouterUrl.hashCode());
-    final java.lang.Object $kafkaSaslConfig = this.getKafkaSaslConfig();
-    result = result * PRIME + ($kafkaSaslConfig == null ? 43 : $kafkaSaslConfig.hashCode());
-    final java.lang.Object $kafkaSaslMechanism = this.getKafkaSaslMechanism();
-    result = result * PRIME + ($kafkaSaslMechanism == null ? 43 : $kafkaSaslMechanism.hashCode());
-    final java.lang.Object $kafkaSecurityProtocol = this.getKafkaSecurityProtocol();
-    result = result * PRIME + ($kafkaSecurityProtocol == null ? 43 : $kafkaSecurityProtocol.hashCode());
-    final java.lang.Object $storeName = this.getStoreName();
-    result = result * PRIME + ($storeName == null ? 43 : $storeName.hashCode());
-    final java.lang.Object $writerConfig = this.getWriterConfig();
-    result = result * PRIME + ($writerConfig == null ? 43 : $writerConfig.hashCode());
-    return result;
+    return Objects.hash(
+        veniceDiscoveryUrl,
+        veniceRouterUrl,
+        veniceToken,
+        kafkaSaslConfig,
+        kafkaSaslMechanism,
+        kafkaSecurityProtocol,
+        storeName,
+        flushIntervalMs,
+        maxNumberUnflushedRecords,
+        writerConfig);
   }
 
   @java.lang.Override

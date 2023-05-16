@@ -9,6 +9,7 @@ import static com.linkedin.venice.samza.VeniceSystemFactory.VENICE_CONTROLLER_DI
 import static com.linkedin.venice.samza.VeniceSystemFactory.VENICE_PUSH_TYPE;
 import static com.linkedin.venice.samza.VeniceSystemFactory.VENICE_ROUTER_URL;
 import static com.linkedin.venice.samza.VeniceSystemFactory.VENICE_STORE;
+import static com.linkedin.venice.samza.VeniceSystemFactory.VENICE_TOKEN;
 
 import com.linkedin.venice.meta.Version;
 import com.linkedin.venice.samza.VeniceSystemFactory;
@@ -246,6 +247,11 @@ public class VeniceSink implements Sink<GenericObject> {
     if (veniceCfg.getWriterConfig() != null && !veniceCfg.getWriterConfig().isEmpty()) {
       LOGGER.info("Additional WriterConfig: {}", veniceCfg.getWriterConfig());
       config.putAll(veniceCfg.getWriterConfig());
+    }
+
+    if (veniceCfg.getVeniceToken() != null && !veniceCfg.getVeniceToken().isEmpty()) {
+      LOGGER.info("VeniceToken: {}", veniceCfg.getVeniceToken());
+      config.put(VENICE_TOKEN, veniceCfg.getVeniceToken());
     }
 
     LOGGER.info("CONFIG: {}", config);

@@ -365,6 +365,7 @@ public class VeniceSystemFactory implements SystemFactory, Serializable {
       LOGGER.info("{}{}: {}", prefix, VENICE_PUSH_TYPE, venicePushType);
       LOGGER.info("{}: {}", VENICE_CONTROLLER_DISCOVERY_URL, discoveryUrl.get());
       LOGGER.info("{}: {}", VENICE_ROUTER_URL, routerUrl);
+      LOGGER.info("{}: {}", VENICE_TOKEN, config.get(VENICE_TOKEN, null));
 
       VeniceSystemProducer p = new VeniceSystemProducer(
           discoveryUrl.get(),
@@ -422,6 +423,7 @@ public class VeniceSystemFactory implements SystemFactory, Serializable {
     LOGGER.info("{}: {}", VENICE_CHILD_D2_ZK_HOSTS, localVeniceZKHosts);
     LOGGER.info("{}: {}", VENICE_PARENT_CONTROLLER_D2_SERVICE, parentControllerD2Service);
     LOGGER.info("{}: {}", VENICE_CHILD_CONTROLLER_D2_SERVICE, localControllerD2Service);
+    LOGGER.info("{}: {}", VENICE_TOKEN, config.get(VENICE_TOKEN, null));
 
     String primaryControllerColoD2ZKHost;
     String primaryControllerD2Service;
