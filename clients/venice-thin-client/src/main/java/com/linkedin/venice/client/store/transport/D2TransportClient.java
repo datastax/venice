@@ -259,7 +259,7 @@ public class D2TransportClient extends TransportClient {
   }
 
   private Map<String, String> injectSecurityHeaders(Map<String, String> headers) {
-    if (token != null & !token.isEmpty()) {
+    if (token != null && !token.isEmpty()) {
       if (headers == null) {
         return Collections.singletonMap("Authorization", "Bearer " + token);
       } else {
