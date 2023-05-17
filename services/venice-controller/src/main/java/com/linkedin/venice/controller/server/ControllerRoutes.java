@@ -13,7 +13,6 @@ import static com.linkedin.venice.controllerapi.ControllerRoute.UPDATE_KAFKA_TOP
 
 import com.linkedin.venice.HttpConstants;
 import com.linkedin.venice.acl.DynamicAccessController;
-import com.linkedin.venice.authentication.AuthenticationService;
 import com.linkedin.venice.authorization.AuthorizerService;
 import com.linkedin.venice.controller.Admin;
 import com.linkedin.venice.controllerapi.ChildAwareResponse;
@@ -40,9 +39,8 @@ public class ControllerRoutes extends AbstractRoute {
       boolean sslEnabled,
       Optional<DynamicAccessController> accessController,
       PubSubTopicRepository pubSubTopicRepository,
-      Optional<AuthenticationService> authenticationService,
       Optional<AuthorizerService> authorizerService) {
-    super(sslEnabled, accessController, authenticationService, authorizerService);
+    super(sslEnabled, accessController, authorizerService);
     this.pubSubTopicRepository = pubSubTopicRepository;
   }
 
