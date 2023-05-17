@@ -99,7 +99,7 @@ public class StoreAclHandler extends SimpleChannelInboundHandler<HttpRequest> {
   @Override
   public void channelRead0(ChannelHandlerContext ctx, HttpRequest req) throws SSLPeerUnverifiedException {
     X509Certificate clientCert = extractClientCert(ctx);
-    Principal principal = getPrincipal(ctx, req, clientCert);
+    Principal principal = getPrincipal(ctx, req, clientCert, authenticationService);
 
     String uri = req.uri();
     // Parse resource type and store name
@@ -261,7 +261,11 @@ public class StoreAclHandler extends SimpleChannelInboundHandler<HttpRequest> {
     }
   }
 
-  private Principal getPrincipal(ChannelHandlerContext ctx, HttpRequest req, X509Certificate clientCert) {
+  public static Principal getPrincipal(
+      ChannelHandlerContext ctx,
+      HttpRequest req,
+      X509Certificate clientCert,
+      Optional<AuthenticationService> authenticationService) {
     Principal principal = null;
     if (authenticationService.isPresent()) {
       // here we are assuming that the Principal depends on the Authorization header

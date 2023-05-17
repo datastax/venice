@@ -107,8 +107,13 @@ public class HttpChannelInitializer extends ChannelInitializer<SocketChannel> {
      * If the store-level access handler is present, we don't want to fail fast if the access gets denied by {@link ServerAclHandler}.
      */
     boolean aclHandlerFailOnAccessRejection = !this.storeAclHandler.isPresent();
-    this.aclHandler = routerAccessController.isPresent()
-        ? Optional.of(new ServerAclHandler(routerAccessController.get(), aclHandlerFailOnAccessRejection))
+    this.aclHandler = routerAccessController.isPresent() || authenticationService.isPresent()
+        ? Optional.of(
+            new ServerAclHandler(
+                routerAccessController,
+                authenticationService,
+                authorizerService,
+                aclHandlerFailOnAccessRejection))
         : Optional.empty();
 
     if (serverConfig.isQuotaEnforcementEnabled()) {
@@ -192,16 +197,17 @@ public class HttpChannelInitializer extends ChannelInitializer<SocketChannel> {
           .addLast(new IdleStateHandler(0, 0, serverConfig.getNettyIdleTimeInSeconds()));
       if (sslFactory.isPresent()) {
         pipeline.addLast(verifySsl);
-        if (aclHandler.isPresent()) {
-          pipeline.addLast(aclHandler.get());
-        }
-        /**
-         * {@link #storeAclHandler} if present must come after {@link #aclHandler}
-         */
-        if (storeAclHandler.isPresent()) {
-          pipeline.addLast(storeAclHandler.get());
-        }
       }
+      if (aclHandler.isPresent()) {
+        pipeline.addLast(aclHandler.get());
+      }
+      /**
+       * {@link #storeAclHandler} if present must come after {@link #aclHandler}
+       */
+      if (storeAclHandler.isPresent()) {
+        pipeline.addLast(storeAclHandler.get());
+      }
+
       pipeline.addLast(
           new RouterRequestHttpHandler(
               statsHandler,
