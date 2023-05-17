@@ -2,11 +2,11 @@ package com.linkedin.venice.controller.server;
 
 import static com.linkedin.venice.HttpConstants.HTTP_GET;
 import static com.linkedin.venice.VeniceConstants.CONTROLLER_SSL_CERTIFICATE_ATTRIBUTE_NAME;
+import static com.linkedin.venice.controller.server.AdminSparkServer.REQUEST_PRINCIPAL_ATTRIBUTE_NAME;
 import static com.linkedin.venice.controllerapi.ControllerApiConstants.NAME;
 
 import com.linkedin.venice.acl.AclException;
 import com.linkedin.venice.acl.DynamicAccessController;
-import com.linkedin.venice.authentication.AuthenticationService;
 import com.linkedin.venice.authorization.AuthorizerService;
 import com.linkedin.venice.authorization.Method;
 import com.linkedin.venice.authorization.Principal;
@@ -14,7 +14,6 @@ import com.linkedin.venice.authorization.Resource;
 import com.linkedin.venice.exceptions.VeniceException;
 import java.security.cert.X509Certificate;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -48,23 +47,21 @@ public class AbstractRoute {
 
   private final boolean sslEnabled;
   private final Optional<DynamicAccessController> accessController;
-  private final Optional<AuthenticationService> authenticationService;
   private final Optional<AuthorizerService> authorizerService;
 
   /**
    * Default constructor for different controller request routes.
-   *
+   * <p>
    * TODO: once Venice Admin allowlist proposal is approved, we can transfer the allowlist to all routes
    * through this constructor; make sure Nuage is also in the allowlist so that they can create stores
+   *
    * @param accessController the access client that check whether a certificate can access a resource
    */
   public AbstractRoute(
       boolean sslEnabled,
       Optional<DynamicAccessController> accessController,
-      Optional<AuthenticationService> authenticationService,
       Optional<AuthorizerService> authorizerService) {
     this.sslEnabled = sslEnabled;
-    this.authenticationService = authenticationService;
     this.accessController = accessController;
     this.authorizerService = authorizerService;
   }
@@ -75,7 +72,6 @@ public class AbstractRoute {
    */
   private boolean hasAccess(Request request, ResourceAclCheck aclCheckFunction, PermissionAssertion assertion) {
     Principal principal = getPrincipal(request);
-    LOGGER.info("hasAccess {} {} {}", request, principal, authenticationService);
 
     String storeName = request.queryParams(NAME);
 
@@ -143,10 +139,7 @@ public class AbstractRoute {
   }
 
   protected Principal getPrincipal(Request request) {
-    return authenticationService.map(service -> {
-      AuthenticationService.HttpRequestAccessor requestAccessor = new HttpRequestAccessor(request);
-      return service.getPrincipalFromHttpRequest(requestAccessor);
-    }).orElse(null);
+    return (Principal) request.attribute(REQUEST_PRINCIPAL_ATTRIBUTE_NAME);
   }
 
   /**
@@ -154,13 +147,11 @@ public class AbstractRoute {
    */
   protected String getPrincipalId(Request request) {
 
-    if (authenticationService.isPresent()) {
-      Principal principal = getPrincipal(request);
-      if (principal != null) {
-        return principal.getName();
-      }
-      // fallback to legacy implementation
+    Principal principal = getPrincipal(request);
+    if (principal != null) {
+      return principal.getName();
     }
+    // fallback to legacy implementation
 
     if (!isSslEnabled()) {
       LOGGER.warn("SSL is not enabled. No certificate could be extracted from request.");
@@ -194,14 +185,15 @@ public class AbstractRoute {
    */
   protected boolean isAllowListUser(Request request) {
     String storeName = request.queryParamOrDefault(NAME, STORE_UNKNOWN);
-    if (!isAclEnabled()) {
-      if (authenticationService.isPresent()) {
-        Principal principal = getPrincipal(request);
-        if (authorizerService.isPresent()) {
-          return authorizerService.get().isSuperUser(principal, storeName);
-        }
+    if (authorizerService.isPresent()) {
+      Principal principal = getPrincipal(request);
+      boolean authorizerResponse = authorizerService.get().isSuperUser(principal, storeName);
+      if (!authorizerResponse) {
+        return false;
       }
-
+      // if the authorizer allows the request, then fallback to the ACL control
+    }
+    if (!isAclEnabled()) {
       /**
        * Grant access if it's not required to check ACL.
        * {@link accessController} will be empty if ACL is not enabled.
@@ -260,27 +252,4 @@ public class AbstractRoute {
     boolean apply(Principal principal, Resource resource, AuthorizerService authorizerService);
   }
 
-  private class HttpRequestAccessor implements AuthenticationService.HttpRequestAccessor {
-    private final Request request;
-
-    public HttpRequestAccessor(Request request) {
-      this.request = request;
-    }
-
-    @Override
-    public String getHeader(String headerName) {
-      return request.headers(headerName);
-    }
-
-    @Override
-    public X509Certificate getCertificate() {
-      return AbstractRoute.this.getCertificate(request);
-    }
-
-    @Override
-    public String toString() {
-      return "Request {" + request.requestMethod() + ", " + request.pathInfo() + "?" + request.queryString()
-          + request.headers().stream().map(h -> h + ":" + request.headers(h)).collect(Collectors.joining()) + "}";
-    }
-  }
 }

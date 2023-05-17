@@ -106,6 +106,7 @@ import com.linkedin.venice.SSLConfig;
 import com.linkedin.venice.acl.DynamicAccessController;
 import com.linkedin.venice.authentication.AuthenticationService;
 import com.linkedin.venice.authorization.AuthorizerService;
+import com.linkedin.venice.authorization.Principal;
 import com.linkedin.venice.controller.Admin;
 import com.linkedin.venice.controller.AuditInfo;
 import com.linkedin.venice.controller.spark.VeniceSparkServerFactory;
@@ -130,6 +131,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import spark.Filter;
 import spark.Request;
 import spark.Response;
 import spark.Service;
@@ -143,6 +145,8 @@ import spark.embeddedserver.EmbeddedServers;
  */
 public class AdminSparkServer extends AbstractVeniceService {
   private static final Logger LOGGER = LogManager.getLogger(AdminSparkServer.class);
+
+  public static final String REQUEST_PRINCIPAL_ATTRIBUTE_NAME = "venice_principal";
 
   private final int port;
   private final Admin admin;
@@ -282,50 +286,50 @@ public class AdminSparkServer extends AbstractVeniceService {
     });
 
     // Build all different routes
-    ControllerRoutes controllerRoutes = new ControllerRoutes(
-        sslEnabled,
-        accessController,
-        pubSubTopicRepository,
-        authenticationService,
-        authorizerService);
+    ControllerRoutes controllerRoutes =
+        new ControllerRoutes(sslEnabled, accessController, pubSubTopicRepository, authorizerService);
     StoresRoutes storesRoutes =
-        new StoresRoutes(sslEnabled, accessController, pubSubTopicRepository, authenticationService, authorizerService);
-    JobRoutes jobRoutes = new JobRoutes(sslEnabled, accessController, authenticationService, authorizerService);
-    SkipAdminRoute skipAdminRoute =
-        new SkipAdminRoute(sslEnabled, accessController, authenticationService, authorizerService);
+        new StoresRoutes(sslEnabled, accessController, pubSubTopicRepository, authorizerService);
+    JobRoutes jobRoutes = new JobRoutes(sslEnabled, accessController, authorizerService);
+    SkipAdminRoute skipAdminRoute = new SkipAdminRoute(sslEnabled, accessController, authorizerService);
 
     CreateVersion createVersion = new CreateVersion(
         sslEnabled,
         accessController,
         this.checkReadMethodForKafka,
         disableParentRequestTopicForStreamPushes,
-        authenticationService,
         authorizerService);
-    CreateStore createStoreRoute =
-        new CreateStore(sslEnabled, accessController, authenticationService, authorizerService);
-    NodesAndReplicas nodesAndReplicas =
-        new NodesAndReplicas(sslEnabled, accessController, authenticationService, authorizerService);
-    SchemaRoutes schemaRoutes =
-        new SchemaRoutes(sslEnabled, accessController, authenticationService, authorizerService);
+    CreateStore createStoreRoute = new CreateStore(sslEnabled, accessController, authorizerService);
+    NodesAndReplicas nodesAndReplicas = new NodesAndReplicas(sslEnabled, accessController, authorizerService);
+    SchemaRoutes schemaRoutes = new SchemaRoutes(sslEnabled, accessController, authorizerService);
     AdminCommandExecutionRoutes adminCommandExecutionRoutes =
-        new AdminCommandExecutionRoutes(sslEnabled, accessController, authenticationService, authorizerService);
+        new AdminCommandExecutionRoutes(sslEnabled, accessController, authorizerService);
     RoutersClusterConfigRoutes routersClusterConfigRoutes =
-        new RoutersClusterConfigRoutes(sslEnabled, accessController, authenticationService, authorizerService);
-    MigrationRoutes migrationRoutes =
-        new MigrationRoutes(sslEnabled, accessController, authenticationService, authorizerService);
-    VersionRoute versionRoute =
-        new VersionRoute(sslEnabled, accessController, authenticationService, authorizerService);
-    ClusterRoutes clusterRoutes =
-        new ClusterRoutes(sslEnabled, accessController, authenticationService, authorizerService);
+        new RoutersClusterConfigRoutes(sslEnabled, accessController, authorizerService);
+    MigrationRoutes migrationRoutes = new MigrationRoutes(sslEnabled, accessController, authorizerService);
+    VersionRoute versionRoute = new VersionRoute(sslEnabled, accessController, authorizerService);
+    ClusterRoutes clusterRoutes = new ClusterRoutes(sslEnabled, accessController, authorizerService);
     NewClusterBuildOutRoutes newClusterBuildOutRoutes =
-        new NewClusterBuildOutRoutes(sslEnabled, accessController, authenticationService, authorizerService);
-    DataRecoveryRoutes dataRecoveryRoutes =
-        new DataRecoveryRoutes(sslEnabled, accessController, authenticationService, authorizerService);
+        new NewClusterBuildOutRoutes(sslEnabled, accessController, authorizerService);
+    DataRecoveryRoutes dataRecoveryRoutes = new DataRecoveryRoutes(sslEnabled, accessController, authorizerService);
     AdminTopicMetadataRoutes adminTopicMetadataRoutes =
-        new AdminTopicMetadataRoutes(sslEnabled, accessController, authenticationService, authorizerService);
+        new AdminTopicMetadataRoutes(sslEnabled, accessController, authorizerService);
     StoragePersonaRoutes storagePersonaRoutes =
-        new StoragePersonaRoutes(sslEnabled, accessController, authenticationService, authorizerService);
+        new StoragePersonaRoutes(sslEnabled, accessController, authorizerService);
 
+    if (authenticationService.isPresent()) {
+      httpService.before(new Filter() {
+        @Override
+        public void handle(Request request, Response response) throws Exception {
+          Principal principal =
+              authenticationService.get().getPrincipalFromHttpRequest(new HttpRequestAccessor(request));
+          request.attribute(REQUEST_PRINCIPAL_ATTRIBUTE_NAME, principal);
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Handle {} {} ({})", request.requestMethod(), request.uri(), principal);
+          }
+        }
+      });
+    }
     httpService.get(SET_VERSION.getPath(), (request, response) -> {
       response.type(HttpConstants.TEXT_HTML);
       return writeMenu("Set Active Version", SET_VERSION.getPath(), SET_VERSION.getParams());
