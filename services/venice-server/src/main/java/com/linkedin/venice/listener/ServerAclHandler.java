@@ -20,6 +20,7 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.util.AttributeKey;
 import io.netty.util.ReferenceCountUtil;
 import java.security.cert.X509Certificate;
+import java.util.Optional;
 import javax.net.ssl.SSLPeerUnverifiedException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -72,12 +73,15 @@ public class ServerAclHandler extends SimpleChannelInboundHandler<HttpRequest> {
    */
   @Override
   public void channelRead0(ChannelHandlerContext ctx, HttpRequest req) throws SSLPeerUnverifiedException {
-    SslHandler sslHandler = ServerHandlerUtils.extractSslHandler(ctx);
-    if (sslHandler == null) {
+    Optional<SslHandler> sslHandler = Optional.ofNullable(ServerHandlerUtils.extractSslHandler(ctx));
+    if (!sslHandler.isPresent() && accessController.isPresent()) {
       throw new VeniceException("Failed to extract ssl handler from the incoming request");
     }
 
-    X509Certificate clientCert = SslUtils.getX509Certificate(sslHandler.engine().getSession().getPeerCertificates()[0]);
+    X509Certificate clientCert = null;
+    if (sslHandler.isPresent()) {
+      clientCert = SslUtils.getX509Certificate(sslHandler.get().engine().getSession().getPeerCertificates()[0]);
+    }
     String method = req.method().name();
 
     boolean accessApproved = false;

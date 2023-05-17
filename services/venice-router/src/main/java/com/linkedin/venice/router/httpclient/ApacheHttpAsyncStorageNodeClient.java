@@ -80,6 +80,8 @@ public class ApacheHttpAsyncStorageNodeClient implements StorageNodeClient {
   private Optional<CachedDnsResolver> dnsResolver = Optional.empty();
   private ClientConnectionWarmingService clientConnectionWarmingService = null;
 
+  private String token;
+
   public ApacheHttpAsyncStorageNodeClient(
       VeniceRouterConfig config,
       Optional<SSLFactory> sslFactory,
@@ -132,6 +134,8 @@ public class ApacheHttpAsyncStorageNodeClient implements StorageNodeClient {
         clientPool.add(createAndStartNewClient().getClient());
       }
     }
+
+    token = config.getToken();
   }
 
   public CloseableHttpAsyncClient getHttpClientForHost(String host) {
@@ -549,6 +553,9 @@ public class ApacheHttpAsyncStorageNodeClient implements StorageNodeClient {
       return;
     }
     HttpGet httpGet = new HttpGet(request.getUrl() + request.getQuery());
+    if (token != null && !token.isEmpty()) {
+      httpGet.addHeader("Authorization", "Bearer " + token);
+    }
 
     if (request.hasTimeout()) {
       RequestConfig requestConfig = RequestConfig.custom()
@@ -584,6 +591,9 @@ public class ApacheHttpAsyncStorageNodeClient implements StorageNodeClient {
     final HttpUriRequest routerRequest = path.composeRouterRequest(address);
     // set up header to pass map required by the Venice server
     path.setupVeniceHeaders((k, v) -> routerRequest.addHeader(k, v));
+    if (token != null && !token.isEmpty()) {
+      routerRequest.addHeader("Authorization", "Bearer " + token);
+    }
     CloseableHttpAsyncClient selectedClient;
     if (perNodeClientEnabled) {
       // If all the pool are used up by the set of live instances, spawn new client

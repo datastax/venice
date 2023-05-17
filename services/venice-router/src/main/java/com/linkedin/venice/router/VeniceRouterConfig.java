@@ -1,5 +1,6 @@
 package com.linkedin.venice.router;
 
+import static com.linkedin.venice.CommonConfigKeys.AUTHENTICATION_TOKEN;
 import static com.linkedin.venice.ConfigKeys.CLUSTER_NAME;
 import static com.linkedin.venice.ConfigKeys.CLUSTER_TO_D2;
 import static com.linkedin.venice.ConfigKeys.CLUSTER_TO_SERVER_D2;
@@ -211,6 +212,11 @@ public class VeniceRouterConfig {
   private double perStoreRouterQuotaBuffer;
   private boolean httpClientOpensslEnabled;
 
+  /**
+   * Authentication token for connections to other Venice components
+   */
+  private String token;
+
   public VeniceRouterConfig(VeniceProperties props) {
     try {
       checkProperties(props);
@@ -388,6 +394,7 @@ public class VeniceRouterConfig {
     perRouterStorageNodeThrottlerEnabled = props.getBoolean(ROUTER_PER_STORAGE_NODE_THROTTLER_ENABLED, true);
     perStoreRouterQuotaBuffer = props.getDouble(ROUTER_PER_STORE_ROUTER_QUOTA_BUFFER, 1.5);
     httpClientOpensslEnabled = props.getBoolean(ROUTER_HTTP_CLIENT_OPENSSL_ENABLED, true);
+    token = props.getString(AUTHENTICATION_TOKEN, "");
   }
 
   public double getPerStoreRouterQuotaBuffer() {
@@ -833,5 +840,9 @@ public class VeniceRouterConfig {
 
   public boolean isHttpClientOpensslEnabled() {
     return httpClientOpensslEnabled;
+  }
+
+  public String getToken() {
+    return token;
   }
 }

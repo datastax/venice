@@ -43,7 +43,7 @@ public class ServerAclHandlerTest {
     req = mock(HttpRequest.class);
 
     accessController = mock(StaticAccessController.class);
-    aclHandler = spy(new ServerAclHandler(Optional.of(accessController)), Optional.empty(), Optional.empty());
+    aclHandler = spy(new ServerAclHandler(Optional.of(accessController), Optional.empty(), Optional.empty()));
 
     // Certificate
     ChannelPipeline pipe = mock(ChannelPipeline.class);
