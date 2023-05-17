@@ -22,3 +22,6 @@ _site/
 Gemfile.lock
 .bundles_cache
 rocksdb/
+services/venice-standalone/zookeeperData/
+services/venice-standalone/kafka-logs/
+services/venice-standalone/rocksdb/
