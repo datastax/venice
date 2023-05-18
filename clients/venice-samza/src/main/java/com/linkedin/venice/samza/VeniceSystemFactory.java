@@ -14,6 +14,7 @@ import static com.linkedin.venice.VeniceConstants.DEFAULT_SSL_FACTORY_CLASS_NAME
 import static com.linkedin.venice.VeniceConstants.NATIVE_REPLICATION_DEFAULT_SOURCE_FABRIC;
 import static com.linkedin.venice.VeniceConstants.SYSTEM_PROPERTY_FOR_APP_RUNNING_REGION;
 
+import com.linkedin.venice.authentication.ClientAuthenticationProviderFactory;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.meta.Version;
 import com.linkedin.venice.security.SSLFactory;
@@ -94,11 +95,6 @@ public class VeniceSystemFactory implements SystemFactory, Serializable {
    * D2 ZK hosts for Venice Parent Cluster.
    */
   public static final String VENICE_PARENT_D2_ZK_HOSTS = "venice.parent.d2.zk.hosts";
-
-  /**
-   * JWT token authentication against Venice services.
-   */
-  public static final String VENICE_TOKEN = "venice.authentication.token";
 
   // D2 service name for local cluster
   public static final String VENICE_CHILD_CONTROLLER_D2_SERVICE = "venice.child.controller.d2.service";
@@ -365,7 +361,6 @@ public class VeniceSystemFactory implements SystemFactory, Serializable {
       LOGGER.info("{}{}: {}", prefix, VENICE_PUSH_TYPE, venicePushType);
       LOGGER.info("{}: {}", VENICE_CONTROLLER_DISCOVERY_URL, discoveryUrl.get());
       LOGGER.info("{}: {}", VENICE_ROUTER_URL, routerUrl);
-      LOGGER.info("{}: {}", VENICE_TOKEN, config.get(VENICE_TOKEN, null));
 
       VeniceSystemProducer p = new VeniceSystemProducer(
           discoveryUrl.get(),
@@ -380,7 +375,7 @@ public class VeniceSystemFactory implements SystemFactory, Serializable {
           SystemTime.INSTANCE);
       p.setRouterUrl(routerUrl);
       p.applyAdditionalWriterConfigs(config);
-      p.setToken(config.get(VENICE_TOKEN, null));
+      p.setAuthenticationProvider(ClientAuthenticationProviderFactory.build(config));
       return p;
     }
 
@@ -423,7 +418,6 @@ public class VeniceSystemFactory implements SystemFactory, Serializable {
     LOGGER.info("{}: {}", VENICE_CHILD_D2_ZK_HOSTS, localVeniceZKHosts);
     LOGGER.info("{}: {}", VENICE_PARENT_CONTROLLER_D2_SERVICE, parentControllerD2Service);
     LOGGER.info("{}: {}", VENICE_CHILD_CONTROLLER_D2_SERVICE, localControllerD2Service);
-    LOGGER.info("{}: {}", VENICE_TOKEN, config.get(VENICE_TOKEN, null));
 
     String primaryControllerColoD2ZKHost;
     String primaryControllerD2Service;
@@ -453,7 +447,7 @@ public class VeniceSystemFactory implements SystemFactory, Serializable {
         sslFactory,
         partitioners);
     systemProducer.applyAdditionalWriterConfigs(config);
-    systemProducer.setToken(config.get(VENICE_TOKEN, null));
+    systemProducer.setAuthenticationProvider(ClientAuthenticationProviderFactory.build(config));
     this.systemProducerStatues.computeIfAbsent(systemProducer, k -> Pair.create(true, false));
     return systemProducer;
   }

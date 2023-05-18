@@ -71,6 +71,7 @@ import static com.linkedin.venice.meta.Version.PushType;
 
 import com.linkedin.venice.HttpConstants;
 import com.linkedin.venice.LastSucceedExecutionIdResponse;
+import com.linkedin.venice.authentication.ClientAuthenticationProvider;
 import com.linkedin.venice.controllerapi.routes.AdminCommandExecutionResponse;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.exceptions.VeniceHttpException;
@@ -109,7 +110,7 @@ public class ControllerClient implements Closeable {
   private static final int QUERY_JOB_STATUS_TIMEOUT = 60 * Time.MS_PER_SECOND;
   private static final int DEFAULT_REQUEST_TIMEOUT_MS = 600 * Time.MS_PER_SECOND;
   private final Optional<SSLFactory> sslFactory;
-  private final String token;
+  private final ClientAuthenticationProvider authenticationProvider;
   private final String clusterName;
   private final VeniceJsonSerializer<Version> versionVeniceJsonSerializer = new VeniceJsonSerializer<>(Version.class);
   private String leaderControllerUrl;
@@ -126,13 +127,17 @@ public class ControllerClient implements Closeable {
   /**
    * @param discoveryUrls comma-delimited urls to find leader controller.
    */
-  public ControllerClient(String clusterName, String discoveryUrls, Optional<SSLFactory> sslFactory, String token) {
+  public ControllerClient(
+      String clusterName,
+      String discoveryUrls,
+      Optional<SSLFactory> sslFactory,
+      ClientAuthenticationProvider authenticationProvider) {
     if (StringUtils.isEmpty(discoveryUrls)) {
       throw new VeniceException("Controller discovery url list is empty: " + discoveryUrls);
     }
 
     this.sslFactory = sslFactory;
-    this.token = token;
+    this.authenticationProvider = authenticationProvider;
     this.clusterName = clusterName;
     this.controllerDiscoveryUrls =
         Arrays.stream(discoveryUrls.split(",")).map(String::trim).collect(Collectors.toList());
@@ -146,7 +151,12 @@ public class ControllerClient implements Closeable {
       String discoveryUrls,
       Optional<SSLFactory> sslFactory,
       int retryAttempts) {
-    return discoverAndConstructControllerClient(storeName, discoveryUrls, sslFactory, retryAttempts, null);
+    return discoverAndConstructControllerClient(
+        storeName,
+        discoveryUrls,
+        sslFactory,
+        retryAttempts,
+        ClientAuthenticationProvider.DISABLED);
   }
 
   public static ControllerClient discoverAndConstructControllerClient(
@@ -154,28 +164,34 @@ public class ControllerClient implements Closeable {
       String discoveryUrls,
       Optional<SSLFactory> sslFactory,
       int retryAttempts,
-      String token) {
-    String clusterName = discoverCluster(discoveryUrls, storeName, sslFactory, retryAttempts, token).getCluster();
-    return constructClusterControllerClient(clusterName, discoveryUrls, sslFactory, token);
+      ClientAuthenticationProvider authenticationProvider) {
+    String clusterName =
+        discoverCluster(discoveryUrls, storeName, sslFactory, retryAttempts, authenticationProvider).getCluster();
+    return constructClusterControllerClient(clusterName, discoveryUrls, sslFactory, authenticationProvider);
   }
 
   public static ControllerClient constructClusterControllerClient(String clusterName, String discoveryUrls) {
-    return constructClusterControllerClient(clusterName, discoveryUrls, Optional.empty(), null);
+    return constructClusterControllerClient(
+        clusterName,
+        discoveryUrls,
+        Optional.empty(),
+        ClientAuthenticationProvider.DISABLED);
   }
 
   public static ControllerClient constructClusterControllerClient(
       String clusterName,
       String discoveryUrls,
       Optional<SSLFactory> sslFactory) {
-    return ControllerClientFactory.getControllerClient(clusterName, discoveryUrls, sslFactory, null);
+    return ControllerClientFactory
+        .getControllerClient(clusterName, discoveryUrls, sslFactory, ClientAuthenticationProvider.DISABLED);
   }
 
   public static ControllerClient constructClusterControllerClient(
       String clusterName,
       String discoveryUrls,
       Optional<SSLFactory> sslFactory,
-      String token) {
-    return ControllerClientFactory.getControllerClient(clusterName, discoveryUrls, sslFactory, token);
+      ClientAuthenticationProvider authenticationProvider) {
+    return ControllerClientFactory.getControllerClient(clusterName, discoveryUrls, sslFactory, authenticationProvider);
   }
 
   @Override
@@ -194,7 +210,7 @@ public class ControllerClient implements Closeable {
     Collections.shuffle(urls);
 
     Exception lastException = null;
-    try (ControllerTransport transport = new ControllerTransport(sslFactory, token)) {
+    try (ControllerTransport transport = new ControllerTransport(sslFactory, authenticationProvider)) {
       for (String url: urls) {
         try {
           String leaderControllerUrl =
@@ -981,7 +997,7 @@ public class ControllerClient implements Closeable {
 
   public ClusterStaleDataAuditResponse getClusterStaleStores(String clusterName, String parentControllerUrl) {
     QueryParams params = newParams().add(CLUSTER, clusterName);
-    try (ControllerTransport transport = new ControllerTransport(sslFactory, token)) {
+    try (ControllerTransport transport = new ControllerTransport(sslFactory, authenticationProvider)) {
       return transport.request(
           parentControllerUrl,
           ControllerRoute.GET_STALE_STORES_IN_CLUSTER,
@@ -1020,8 +1036,8 @@ public class ControllerClient implements Closeable {
       String storeName,
       Optional<SSLFactory> sslFactory,
       int retryAttempts,
-      String token) {
-    try (ControllerClient client = new ControllerClient("*", discoveryUrls, sslFactory)) {
+      ClientAuthenticationProvider authenticationProvider) {
+    try (ControllerClient client = new ControllerClient("*", discoveryUrls, sslFactory, authenticationProvider)) {
       return retryableRequest(client, retryAttempts, c -> c.discoverCluster(storeName));
     }
   }
@@ -1031,7 +1047,7 @@ public class ControllerClient implements Closeable {
     Collections.shuffle(urls);
 
     Exception lastException = null;
-    try (ControllerTransport transport = new ControllerTransport(sslFactory, token)) {
+    try (ControllerTransport transport = new ControllerTransport(sslFactory, authenticationProvider)) {
       for (String url: urls) {
         try {
           // Because the way to get parameter is different between controller and router, in order to support query
@@ -1232,7 +1248,7 @@ public class ControllerClient implements Closeable {
       byte[] data) {
     Exception lastException = null;
     boolean logErrorMessage = true;
-    try (ControllerTransport transport = new ControllerTransport(sslFactory, token)) {
+    try (ControllerTransport transport = new ControllerTransport(sslFactory, authenticationProvider)) {
       for (int attempt = 1; attempt <= maxAttempts; ++attempt) {
         try {
           return transport.request(getLeaderControllerUrl(), route, params, responseType, timeoutMs, data);

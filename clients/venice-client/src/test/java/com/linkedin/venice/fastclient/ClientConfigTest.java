@@ -4,6 +4,7 @@ import static org.mockito.Mockito.mock;
 import static org.testng.Assert.assertEquals;
 
 import com.linkedin.r2.transport.common.Client;
+import com.linkedin.venice.authentication.jwt.ClientAuthenticationProviderToken;
 import com.linkedin.venice.client.exceptions.VeniceClientException;
 import com.linkedin.venice.client.store.AvroGenericStoreClient;
 import org.testng.annotations.Test;
@@ -92,9 +93,10 @@ public class ClientConfigTest {
 
   @Test
   public void testClientWithToken() {
+    ClientAuthenticationProviderToken testToken = ClientAuthenticationProviderToken.TOKEN("test_token");
     ClientConfig.ClientConfigBuilder clientConfigBuilder =
-        getClientConfigWithMinimumRequiredInputs().setToken("test_token");
+        getClientConfigWithMinimumRequiredInputs().setAuthenticationProvider(testToken);
 
-    assertEquals("test_token", clientConfigBuilder.build().getToken());
+    assertEquals(testToken, clientConfigBuilder.build().getAuthenticationProvider());
   }
 }

@@ -1,6 +1,7 @@
 package com.linkedin.venice.router.httpclient;
 
 import com.linkedin.alpini.router.api.RouterException;
+import com.linkedin.venice.authentication.ClientAuthenticationProvider;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.httpclient.CachedDnsResolver;
 import com.linkedin.venice.httpclient.HttpClientUtils;
@@ -80,7 +81,7 @@ public class ApacheHttpAsyncStorageNodeClient implements StorageNodeClient {
   private Optional<CachedDnsResolver> dnsResolver = Optional.empty();
   private ClientConnectionWarmingService clientConnectionWarmingService = null;
 
-  private String token;
+  private ClientAuthenticationProvider authenticationProvider;
 
   public ApacheHttpAsyncStorageNodeClient(
       VeniceRouterConfig config,
@@ -135,7 +136,7 @@ public class ApacheHttpAsyncStorageNodeClient implements StorageNodeClient {
       }
     }
 
-    token = config.getToken();
+    authenticationProvider = config.getAuthenticationProvider();
   }
 
   public CloseableHttpAsyncClient getHttpClientForHost(String host) {
@@ -553,8 +554,8 @@ public class ApacheHttpAsyncStorageNodeClient implements StorageNodeClient {
       return;
     }
     HttpGet httpGet = new HttpGet(request.getUrl() + request.getQuery());
-    if (token != null && !token.isEmpty()) {
-      httpGet.addHeader("Authorization", "Bearer " + token);
+    if (authenticationProvider != null) {
+      authenticationProvider.getHTTPAuthenticationHeaders().forEach(httpGet::addHeader);
     }
 
     if (request.hasTimeout()) {
@@ -591,8 +592,8 @@ public class ApacheHttpAsyncStorageNodeClient implements StorageNodeClient {
     final HttpUriRequest routerRequest = path.composeRouterRequest(address);
     // set up header to pass map required by the Venice server
     path.setupVeniceHeaders((k, v) -> routerRequest.addHeader(k, v));
-    if (token != null && !token.isEmpty()) {
-      routerRequest.addHeader("Authorization", "Bearer " + token);
+    if (authenticationProvider != null) {
+      authenticationProvider.getHTTPAuthenticationHeaders().forEach(routerRequest::addHeader);
     }
     CloseableHttpAsyncClient selectedClient;
     if (perNodeClientEnabled) {

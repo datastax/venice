@@ -1,6 +1,5 @@
 package com.linkedin.venice.router;
 
-import static com.linkedin.venice.CommonConfigKeys.AUTHENTICATION_TOKEN;
 import static com.linkedin.venice.ConfigKeys.CLUSTER_NAME;
 import static com.linkedin.venice.ConfigKeys.CLUSTER_TO_D2;
 import static com.linkedin.venice.ConfigKeys.CLUSTER_TO_SERVER_D2;
@@ -97,6 +96,8 @@ import static com.linkedin.venice.helix.HelixInstanceConfigRepository.ZONE_FIELD
 import static com.linkedin.venice.router.api.VeniceMultiKeyRoutingStrategy.LEAST_LOADED_ROUTING;
 import static com.linkedin.venice.router.api.routing.helix.HelixGroupSelectionStrategyEnum.LEAST_LOADED;
 
+import com.linkedin.venice.authentication.ClientAuthenticationProvider;
+import com.linkedin.venice.authentication.ClientAuthenticationProviderFactory;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.router.api.VeniceMultiKeyRoutingStrategy;
 import com.linkedin.venice.router.api.routing.helix.HelixGroupSelectionStrategyEnum;
@@ -215,7 +216,7 @@ public class VeniceRouterConfig {
   /**
    * Authentication token for connections to other Venice components
    */
-  private String token;
+  private ClientAuthenticationProvider authenticationProvider;
 
   public VeniceRouterConfig(VeniceProperties props) {
     try {
@@ -394,7 +395,7 @@ public class VeniceRouterConfig {
     perRouterStorageNodeThrottlerEnabled = props.getBoolean(ROUTER_PER_STORAGE_NODE_THROTTLER_ENABLED, true);
     perStoreRouterQuotaBuffer = props.getDouble(ROUTER_PER_STORE_ROUTER_QUOTA_BUFFER, 1.5);
     httpClientOpensslEnabled = props.getBoolean(ROUTER_HTTP_CLIENT_OPENSSL_ENABLED, true);
-    token = props.getString(AUTHENTICATION_TOKEN, "");
+    authenticationProvider = ClientAuthenticationProviderFactory.build(props);
   }
 
   public double getPerStoreRouterQuotaBuffer() {
@@ -842,7 +843,7 @@ public class VeniceRouterConfig {
     return httpClientOpensslEnabled;
   }
 
-  public String getToken() {
-    return token;
+  public ClientAuthenticationProvider getAuthenticationProvider() {
+    return authenticationProvider;
   }
 }
