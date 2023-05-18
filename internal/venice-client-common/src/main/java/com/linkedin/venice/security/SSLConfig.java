@@ -4,6 +4,7 @@ import static com.linkedin.venice.CommonConfigKeys.SSL_ENABLED;
 import static com.linkedin.venice.CommonConfigKeys.SSL_KEYSTORE_LOCATION;
 import static com.linkedin.venice.CommonConfigKeys.SSL_KEYSTORE_PASSWORD;
 import static com.linkedin.venice.CommonConfigKeys.SSL_KEYSTORE_TYPE;
+import static com.linkedin.venice.CommonConfigKeys.SSL_NEEDS_CLIENT_CERT;
 import static com.linkedin.venice.CommonConfigKeys.SSL_TRUSTSTORE_LOCATION;
 import static com.linkedin.venice.CommonConfigKeys.SSL_TRUSTSTORE_PASSWORD;
 
@@ -104,6 +105,7 @@ public class SSLConfig {
     config.setTrustStoreFilePath(sslProperties.getProperty(SSL_TRUSTSTORE_LOCATION));
     config.setKeyStorePassword(sslProperties.getProperty(SSL_KEYSTORE_PASSWORD));
     config.setTrustStoreFilePassword(sslProperties.getProperty(SSL_TRUSTSTORE_PASSWORD));
+    config.setSslRequireClientCerts(Boolean.valueOf(sslProperties.getProperty(SSL_NEEDS_CLIENT_CERT, "true")));
     return config;
   }
 
