@@ -35,6 +35,7 @@ import com.linkedin.venice.ConfigKeys;
 import com.linkedin.venice.D2.D2ClientUtils;
 import com.linkedin.venice.SSLConfig;
 import com.linkedin.venice.acl.DynamicAccessController;
+import com.linkedin.venice.authentication.ClientAuthenticationProvider;
 import com.linkedin.venice.client.store.AvroSpecificStoreClient;
 import com.linkedin.venice.client.store.ClientConfig;
 import com.linkedin.venice.client.store.ClientFactory;
@@ -337,7 +338,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
   private final boolean isControllerClusterHAAS;
   private final String coloLeaderClusterName;
   private final Optional<SSLFactory> sslFactory;
-  private final String token;
+  private final ClientAuthenticationProvider authenticationProvider;
   private final String pushJobStatusStoreClusterName;
   private final Optional<PushStatusStoreReader> pushStatusStoreReader;
   private final Optional<PushStatusStoreWriter> pushStatusStoreWriter;
@@ -446,7 +447,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
       sslFactory = Optional.empty();
     }
 
-    this.token = multiClusterConfigs.getToken();
+    this.authenticationProvider = multiClusterConfigs.getAuthenticationProvider();
 
     // TODO: Consider re-using the same zkClient for the ZKHelixAdmin and TopicManager.
     ZkClient zkClientForHelixAdmin = ZkClientFactory.newZkClient(multiClusterConfigs.getZkAddress());
@@ -1126,7 +1127,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
         clusterName,
         getLeaderController(clusterName).getUrl(false),
         sslFactory,
-        token);
+        authenticationProvider);
     SchemaResponse response = controllerClient.getValueSchemaID(storeName, valueSchemaStr);
     if (response.isError()) {
       throw new VeniceException(
@@ -1337,8 +1338,8 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
     }
 
     String destControllerUrl = this.getLeaderController(destClusterName).getUrl(false);
-    ControllerClient destControllerClient =
-        ControllerClient.constructClusterControllerClient(destClusterName, destControllerUrl, sslFactory, token);
+    ControllerClient destControllerClient = ControllerClient
+        .constructClusterControllerClient(destClusterName, destControllerUrl, sslFactory, authenticationProvider);
 
     // Get original store properties
     StoreInfo srcStore = StoreInfo.fromStore(this.getStore(srcClusterName, storeName));
@@ -1519,7 +1520,11 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
           .forEach(
               entry -> controllerClients.put(
                   entry.getKey(),
-                  ControllerClient.constructClusterControllerClient(clusterName, entry.getValue(), sslFactory, token)));
+                  ControllerClient.constructClusterControllerClient(
+                      clusterName,
+                      entry.getValue(),
+                      sslFactory,
+                      authenticationProvider)));
 
       veniceControllerConfig.getChildDataCenterControllerD2Map()
           .entrySet()
@@ -1836,7 +1841,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
               sourceCluster,
               getLeaderController(sourceCluster).getUrl(false),
               sslFactory,
-              token);
+              authenticationProvider);
           VersionResponse response = sourceClusterControllerClient.addVersionAndStartIngestion(
               storeName,
               pushJobId,
@@ -1859,7 +1864,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
             destinationCluster,
             getLeaderController(destinationCluster).getUrl(false),
             sslFactory,
-            token);
+            authenticationProvider);
         VersionResponse response = destClusterControllerClient.addVersionAndStartIngestion(
             storeName,
             pushJobId,
@@ -4367,8 +4372,11 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
         // Migration has completed in this colo but the overall migration is still in progress.
         if (clusterName.equals(destinationCluster)) {
           // Mirror new updates back to the source cluster in case we abort migration after completion.
-          ControllerClient sourceClusterControllerClient =
-              new ControllerClient(sourceCluster, getLeaderController(sourceCluster).getUrl(false), sslFactory, token);
+          ControllerClient sourceClusterControllerClient = new ControllerClient(
+              sourceCluster,
+              getLeaderController(sourceCluster).getUrl(false),
+              sslFactory,
+              authenticationProvider);
           ControllerResponse response = sourceClusterControllerClient.updateStore(storeName, params);
           if (response.isError()) {
             LOGGER.warn(
@@ -4383,7 +4391,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
             destinationCluster,
             getLeaderController(destinationCluster).getUrl(false),
             sslFactory,
-            token);
+            authenticationProvider);
         ControllerResponse response = destClusterControllerClient.updateStore(storeName, params);
         if (response.isError()) {
           LOGGER.warn(

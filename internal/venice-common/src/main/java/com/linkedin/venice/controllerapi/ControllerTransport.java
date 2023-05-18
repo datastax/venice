@@ -2,6 +2,7 @@ package com.linkedin.venice.controllerapi;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linkedin.venice.HttpMethod;
+import com.linkedin.venice.authentication.ClientAuthenticationProvider;
 import com.linkedin.venice.exceptions.ErrorType;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.exceptions.VeniceHttpException;
@@ -53,14 +54,14 @@ public class ControllerTransport implements AutoCloseable {
   private final CloseableHttpAsyncClient httpClient;
   private Map<String, String> additionalHeaders = new ConcurrentHashMap<>();
 
-  public ControllerTransport(Optional<SSLFactory> sslFactory, String token) {
+  public ControllerTransport(Optional<SSLFactory> sslFactory, ClientAuthenticationProvider authenticationProvider) {
     this.httpClient = HttpAsyncClients.custom()
         .setDefaultRequestConfig(this.REQUEST_CONFIG)
         .setSSLStrategy(sslFactory.isPresent() ? new SSLIOSessionStrategy(sslFactory.get().getSSLContext()) : null)
         .build();
     this.httpClient.start();
-    if (token != null && !token.isEmpty()) {
-      this.additionalHeaders.put("Authorization", "Bearer " + token);
+    if (authenticationProvider != null) {
+      this.additionalHeaders.putAll(authenticationProvider.getHTTPAuthenticationHeaders());
     }
   }
 

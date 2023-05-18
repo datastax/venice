@@ -1,6 +1,7 @@
 package com.linkedin.venice.client.store.transport;
 
 import com.linkedin.venice.HttpConstants;
+import com.linkedin.venice.authentication.ClientAuthenticationProvider;
 import com.linkedin.venice.client.exceptions.VeniceClientException;
 import com.linkedin.venice.compression.CompressionStrategy;
 import com.linkedin.venice.schema.SchemaData;
@@ -35,16 +36,19 @@ public class HttpTransportClient extends TransportClient {
   // Example: 'http://router-host:80/'
   protected final String routerUrl;
   private final CloseableHttpAsyncClient httpClient;
-  protected final String token;
+  protected final ClientAuthenticationProvider authenticationProvider;
 
-  public HttpTransportClient(String routerUrl, String token) {
-    this(routerUrl, HttpAsyncClients.createDefault(), token);
+  public HttpTransportClient(String routerUrl, ClientAuthenticationProvider authenticationProvider) {
+    this(routerUrl, HttpAsyncClients.createDefault(), authenticationProvider);
   }
 
-  public HttpTransportClient(String routerUrl, CloseableHttpAsyncClient httpClient, String token) {
+  public HttpTransportClient(
+      String routerUrl,
+      CloseableHttpAsyncClient httpClient,
+      ClientAuthenticationProvider authenticationProvider) {
     this.routerUrl = ensureTrailingSlash(routerUrl);
     this.httpClient = httpClient;
-    this.token = token;
+    this.authenticationProvider = authenticationProvider;
     httpClient.start();
   }
 
@@ -111,8 +115,10 @@ public class HttpTransportClient extends TransportClient {
     headers.forEach((K, V) -> {
       httpGet.addHeader(K, V);
     });
-    if (token != null && !token.isEmpty()) {
-      httpGet.addHeader("Authorization", "Bearer " + token);
+    if (authenticationProvider != null) {
+      authenticationProvider.getHTTPAuthenticationHeaders().forEach((K, V) -> {
+        httpGet.addHeader(K, V);
+      });
     }
     return httpGet;
   }
@@ -122,8 +128,10 @@ public class HttpTransportClient extends TransportClient {
     headers.forEach((K, V) -> {
       httpPost.setHeader(K, V);
     });
-    if (token != null && !token.isEmpty()) {
-      httpPost.addHeader("Authorization", "Bearer " + token);
+    if (authenticationProvider != null) {
+      authenticationProvider.getHTTPAuthenticationHeaders().forEach((K, V) -> {
+        httpPost.addHeader(K, V);
+      });
     }
     BasicHttpEntity entity = new BasicHttpEntity();
     entity.setContent(new ByteArrayInputStream(body));
@@ -148,7 +156,7 @@ public class HttpTransportClient extends TransportClient {
    */
   @Override
   public TransportClient getCopyIfNotUsableInCallback() {
-    return new HttpTransportClient(routerUrl, token);
+    return new HttpTransportClient(routerUrl, authenticationProvider);
   }
 
   private static class HttpTransportClientCallback extends TransportClientCallback

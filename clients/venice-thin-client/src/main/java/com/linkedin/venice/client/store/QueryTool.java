@@ -4,6 +4,8 @@ import static com.linkedin.venice.CommonConfigKeys.SSL_FACTORY_CLASS_NAME;
 import static com.linkedin.venice.VeniceConstants.DEFAULT_SSL_FACTORY_CLASS_NAME;
 
 import com.linkedin.avroutil1.compatibility.AvroCompatibilityHelper;
+import com.linkedin.venice.authentication.ClientAuthenticationProvider;
+import com.linkedin.venice.authentication.jwt.ClientAuthenticationProviderToken;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.schema.vson.VsonAvroSchemaAdapter;
 import com.linkedin.venice.security.SSLFactory;
@@ -43,12 +45,20 @@ public class QueryTool {
     String url = removeQuotes(args[URL]);
     boolean isVsonStore = Boolean.parseBoolean(removeQuotes(args[IS_VSON_STORE]));
     String sslConfigFilePath = removeQuotes(args[SSL_CONFIG_FILE_PATH]);
-    String token = args.length > TOKEN ? removeQuotes(args[TOKEN]) : null;
+    String token = args.length > TOKEN ? removeQuotes(args[TOKEN]) : "";
     Optional<String> sslConfigFilePathArgs =
         StringUtils.isEmpty(sslConfigFilePath) ? Optional.empty() : Optional.of(sslConfigFilePath);
     System.out.println();
 
-    Map<String, String> outputMap = queryStoreForKey(store, keyString, url, isVsonStore, sslConfigFilePathArgs, token);
+    ClientAuthenticationProvider authenticationProvider;
+    if (token.isEmpty()) {
+      authenticationProvider = ClientAuthenticationProvider.DISABLED;
+    } else {
+      authenticationProvider = ClientAuthenticationProviderToken.TOKEN(token);
+    }
+
+    Map<String, String> outputMap =
+        queryStoreForKey(store, keyString, url, isVsonStore, sslConfigFilePathArgs, authenticationProvider);
     outputMap.entrySet().stream().forEach(System.out::println);
   }
 
@@ -58,7 +68,7 @@ public class QueryTool {
       String url,
       boolean isVsonStore,
       Optional<String> sslConfigFile,
-      String token) throws Exception {
+      ClientAuthenticationProvider authenticationProvider) throws Exception {
 
     SSLFactory factory = null;
     if (sslConfigFile.isPresent()) {
@@ -76,7 +86,7 @@ public class QueryTool {
     try (AvroGenericStoreClient<Object, Object> client = ClientFactory.getAndStartGenericAvroClient(
         ClientConfig.defaultGenericClientConfig(store)
             .setVeniceURL(url)
-            .setToken(token)
+            .setAuthenticationProvider(authenticationProvider)
             .setVsonClient(isVsonStore)
             .setSslFactory(factory))) {
       AbstractAvroStoreClient<Object, Object> castClient =

@@ -5,6 +5,7 @@ import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNull;
 
 import com.linkedin.venice.authentication.AuthenticationService;
+import com.linkedin.venice.authentication.jwt.ClientAuthenticationProviderToken;
 import com.linkedin.venice.authentication.jwt.TokenAuthenticationService;
 import com.linkedin.venice.authorization.AuthorizerService;
 import com.linkedin.venice.authorization.SimpleAuthorizerService;
@@ -87,7 +88,7 @@ public class TestRouterWithTokenAuthentication {
     try (AvroGenericStoreClient<Object, Object> storeClient = ClientFactory.getAndStartGenericAvroClient(
         ClientConfig.defaultGenericClientConfig(storeName)
             .setVeniceURL("http://" + routers.get(0).getAddress())
-            .setToken("xxx"))) {
+            .setAuthenticationProvider(ClientAuthenticationProviderToken.TOKEN("xxx")))) {
       storeClient.get("myKey").get();
     } catch (ExecutionException ok) {
       VeniceClientHttpException veniceClientHttpException = (VeniceClientHttpException) ok.getCause();
@@ -98,7 +99,9 @@ public class TestRouterWithTokenAuthentication {
     try (AvroGenericStoreClient<Object, Object> storeClient = ClientFactory.getAndStartGenericAvroClient(
         ClientConfig.defaultGenericClientConfig(storeName)
             .setVeniceURL("http://" + routers.get(0).getAddress())
-            .setToken("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.DBjI5MJuVyCa6oncrP5eEP329Pmixk6SX4UG-HS0P7g"))) {
+            .setAuthenticationProvider(
+                ClientAuthenticationProviderToken
+                    .TOKEN("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.DBjI5MJuVyCa6oncrP5eEP329Pmixk6SX4UG-HS0P7g")))) {
       assertNull(storeClient.get("myKey").get());
     }
   }

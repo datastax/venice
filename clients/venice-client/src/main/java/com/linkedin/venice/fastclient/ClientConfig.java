@@ -3,6 +3,7 @@ package com.linkedin.venice.fastclient;
 import com.linkedin.d2.balancer.D2Client;
 import com.linkedin.davinci.client.DaVinciClient;
 import com.linkedin.r2.transport.common.Client;
+import com.linkedin.venice.authentication.ClientAuthenticationProvider;
 import com.linkedin.venice.client.exceptions.VeniceClientException;
 import com.linkedin.venice.client.store.AvroGenericStoreClient;
 import com.linkedin.venice.client.store.AvroSpecificStoreClient;
@@ -68,7 +69,7 @@ public class ClientConfig<K, V, T extends SpecificRecord> {
   private final D2Client d2Client;
   private final String clusterDiscoveryD2Service;
 
-  private final String token;
+  private final ClientAuthenticationProvider authenticationProvider;
 
   private ClientConfig(
       String storeName,
@@ -99,14 +100,14 @@ public class ClientConfig<K, V, T extends SpecificRecord> {
       StoreMetadataFetchMode storeMetadataFetchMode,
       D2Client d2Client,
       String clusterDiscoveryD2Service,
-      String token) {
+      ClientAuthenticationProvider authenticationProvider) {
     if (storeName == null || storeName.isEmpty()) {
       throw new VeniceClientException("storeName param shouldn't be empty");
     }
     if (r2Client == null) {
       throw new VeniceClientException("r2Client param shouldn't be null");
     }
-    this.token = token;
+    this.authenticationProvider = authenticationProvider;
     this.r2Client = r2Client;
     this.storeName = storeName;
     this.statsPrefix = (statsPrefix == null ? "" : statsPrefix);
@@ -325,8 +326,8 @@ public class ClientConfig<K, V, T extends SpecificRecord> {
     return this.clusterDiscoveryD2Service;
   }
 
-  public String getToken() {
-    return token;
+  public ClientAuthenticationProvider getAuthenticationProvider() {
+    return authenticationProvider;
   }
 
   public static class ClientConfigBuilder<K, V, T extends SpecificRecord> {
@@ -375,10 +376,10 @@ public class ClientConfig<K, V, T extends SpecificRecord> {
     private StoreMetadataFetchMode storeMetadataFetchMode = StoreMetadataFetchMode.DA_VINCI_CLIENT_BASED_METADATA;
     private D2Client d2Client;
     private String clusterDiscoveryD2Service;
-    private String token;
+    private ClientAuthenticationProvider authenticationProvider;
 
-    public ClientConfigBuilder<K, V, T> setToken(String token) {
-      this.token = token;
+    public ClientConfigBuilder<K, V, T> setAuthenticationProvider(ClientAuthenticationProvider authenticationProvider) {
+      this.authenticationProvider = authenticationProvider;
       return this;
     }
 
@@ -535,7 +536,7 @@ public class ClientConfig<K, V, T extends SpecificRecord> {
 
     public ClientConfigBuilder<K, V, T> clone() {
       return new ClientConfigBuilder().setStoreName(storeName)
-          .setToken(token)
+          .setAuthenticationProvider(authenticationProvider)
           .setR2Client(r2Client)
           .setMetricsRepository(metricsRepository)
           .setStatsPrefix(statsPrefix)
@@ -595,7 +596,7 @@ public class ClientConfig<K, V, T extends SpecificRecord> {
           storeMetadataFetchMode,
           d2Client,
           clusterDiscoveryD2Service,
-          token);
+          authenticationProvider);
     }
   }
 }

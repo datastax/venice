@@ -54,6 +54,9 @@ public class VenicePulsarSinkConfig implements Serializable {
   @FieldDoc(defaultValue = "", help = "The name of the Venice store")
   private String storeName = "test-store";
 
+  @FieldDoc(defaultValue = "", help = "JWT token to authenticate")
+  private String veniceToken = "";
+
   @FieldDoc(defaultValue = "500", help = "Interval in milliseconds to flush data to Venice")
   private long flushIntervalMs = 500L;
 
@@ -110,12 +113,21 @@ public class VenicePulsarSinkConfig implements Serializable {
     return this.maxNumberUnflushedRecords;
   }
 
+  public String getVeniceToken() {
+    return veniceToken;
+  }
+
   /**
    * @return {@code this}.
    */
   @java.lang.SuppressWarnings("all")
   public VenicePulsarSinkConfig setVeniceDiscoveryUrl(final String veniceDiscoveryUrl) {
     this.veniceDiscoveryUrl = veniceDiscoveryUrl;
+    return this;
+  }
+
+  public VenicePulsarSinkConfig setVeniceToken(final String veniceToken) {
+    this.veniceToken = veniceToken;
     return this;
   }
 
@@ -202,6 +214,10 @@ public class VenicePulsarSinkConfig implements Serializable {
         ? other$veniceDiscoveryUrl != null
         : !this$veniceDiscoveryUrl.equals(other$veniceDiscoveryUrl))
       return false;
+    final java.lang.Object this$veniceToken = this.getVeniceToken();
+    final java.lang.Object other$veniceToken = other.getVeniceToken();
+    if (this$veniceToken == null ? other$veniceToken != null : !this$veniceToken.equals(other$veniceToken))
+      return false;
     final java.lang.Object this$veniceRouterUrl = this.getVeniceRouterUrl();
     final java.lang.Object other$veniceRouterUrl = other.getVeniceRouterUrl();
     if (this$veniceRouterUrl == null
@@ -248,6 +264,8 @@ public class VenicePulsarSinkConfig implements Serializable {
     result = result * PRIME + this.getMaxNumberUnflushedRecords();
     final java.lang.Object $veniceDiscoveryUrl = this.getVeniceDiscoveryUrl();
     result = result * PRIME + ($veniceDiscoveryUrl == null ? 43 : $veniceDiscoveryUrl.hashCode());
+    final java.lang.Object $veniceToken = this.getVeniceToken();
+    result = result * PRIME + ($veniceToken == null ? 43 : $veniceToken.hashCode());
     final java.lang.Object $veniceRouterUrl = this.getVeniceRouterUrl();
     result = result * PRIME + ($veniceRouterUrl == null ? 43 : $veniceRouterUrl.hashCode());
     final java.lang.Object $kafkaSaslConfig = this.getKafkaSaslConfig();
@@ -267,8 +285,8 @@ public class VenicePulsarSinkConfig implements Serializable {
     return "VeniceSinkConfig(veniceDiscoveryUrl=" + this.getVeniceDiscoveryUrl() + ", veniceRouterUrl="
         + this.getVeniceRouterUrl() + ", kafkaSaslConfig=" + this.getKafkaSaslConfig() + ", kafkaSaslMechanism="
         + this.getKafkaSaslMechanism() + ", kafkaSecurityProtocol=" + this.getKafkaSecurityProtocol() + ", storeName="
-        + this.getStoreName() + ", flushIntervalMs=" + this.getFlushIntervalMs() + ", maxNumberUnflushedRecords="
-        + this.getMaxNumberUnflushedRecords() + ")";
+        + this.getStoreName() + ", veniceToken=" + this.getVeniceToken() + ", flushIntervalMs="
+        + this.getFlushIntervalMs() + ", maxNumberUnflushedRecords=" + this.getMaxNumberUnflushedRecords() + ")";
   }
 
 }

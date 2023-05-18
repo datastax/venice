@@ -1,5 +1,6 @@
 package com.linkedin.venice.controllerapi;
 
+import com.linkedin.venice.authentication.ClientAuthenticationProvider;
 import com.linkedin.venice.security.SSLFactory;
 import com.linkedin.venice.utils.SharedObjectFactory;
 import java.util.HashMap;
@@ -15,10 +16,10 @@ public class ControllerClientFactory {
       String clusterName,
       String discoveryUrls,
       Optional<SSLFactory> sslFactory,
-      String token) {
+      ClientAuthenticationProvider authenticationProvider) {
     final String clientIdentifier = clusterName + discoveryUrls;
     return SHARED_OBJECT_FACTORY.get(clientIdentifier, () -> {
-      ControllerClient client = new ControllerClient(clusterName, discoveryUrls, sslFactory, token);
+      ControllerClient client = new ControllerClient(clusterName, discoveryUrls, sslFactory, authenticationProvider);
       CONTROLLER_CLIENT_TO_IDENTIFIER_MAP.put(client, clientIdentifier);
       return client;
     }, client -> {

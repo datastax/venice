@@ -7,6 +7,7 @@ import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 
 import com.linkedin.venice.authentication.AuthenticationService;
+import com.linkedin.venice.authentication.jwt.ClientAuthenticationProviderToken;
 import com.linkedin.venice.authentication.jwt.TokenAuthenticationService;
 import com.linkedin.venice.authorization.AuthorizerService;
 import com.linkedin.venice.authorization.SimpleAuthorizerService;
@@ -76,8 +77,11 @@ public class TestJWTAuthenticationEndToEnd {
       assertNull(store);
     }
 
-    try (ControllerClient controllerClient = ControllerClient
-        .constructClusterControllerClient(clusterName, venice.getAllControllersURLs(), Optional.empty(), token);) {
+    try (ControllerClient controllerClient = ControllerClient.constructClusterControllerClient(
+        clusterName,
+        venice.getAllControllersURLs(),
+        Optional.empty(),
+        ClientAuthenticationProviderToken.TOKEN(token));) {
       controllerClient.createNewStore(storeName, "dev", schema, schema);
       Store store = venice.getLeaderVeniceController().getVeniceAdmin().getStore(clusterName, storeName);
       assertNotNull(store);

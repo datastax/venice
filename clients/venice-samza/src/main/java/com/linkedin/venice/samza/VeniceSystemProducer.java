@@ -8,6 +8,7 @@ import com.linkedin.avroutil1.compatibility.AvroCompatibilityHelper;
 import com.linkedin.d2.balancer.D2Client;
 import com.linkedin.d2.balancer.D2ClientBuilder;
 import com.linkedin.venice.D2.D2ClientUtils;
+import com.linkedin.venice.authentication.ClientAuthenticationProvider;
 import com.linkedin.venice.client.store.ClientConfig;
 import com.linkedin.venice.client.store.ClientFactory;
 import com.linkedin.venice.client.store.transport.D2TransportClient;
@@ -152,7 +153,7 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
   private Optional<String> discoveryUrl = Optional.empty();
   private Optional<String> routerUrl = Optional.empty();
 
-  private String token;
+  private ClientAuthenticationProvider authenticationProvider;
 
   private VeniceWriter<byte[], byte[], byte[]> veniceWriter = null;
   private Optional<RouterBasedPushMonitor> pushMonitor = Optional.empty();
@@ -323,8 +324,8 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
     this.additionalWriterConfigs.putAll(additionalWriterConfigs);
   }
 
-  public void setToken(String token) {
-    this.token = token;
+  public void setAuthenticationProvider(ClientAuthenticationProvider authenticationProvider) {
+    this.authenticationProvider = authenticationProvider;
   }
 
   public void setRouterUrl(String routerUrl) {
@@ -426,8 +427,8 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
 
     final TransportClient transportClient;
     if (discoveryUrl.isPresent()) {
-      this.controllerClient =
-          ControllerClient.discoverAndConstructControllerClient(storeName, discoveryUrl.get(), sslFactory, 1, token);
+      this.controllerClient = ControllerClient
+          .discoverAndConstructControllerClient(storeName, discoveryUrl.get(), sslFactory, 1, authenticationProvider);
 
       /**
        * Verify that the latest {@link com.linkedin.venice.serialization.avro.AvroProtocolDefinition#KAFKA_MESSAGE_ENVELOPE}
@@ -438,7 +439,8 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
         LOGGER.info("Start verifying the latest protocols at runtime are valid in Venice backend.");
         String kafkaMessageEnvelopSchemaSysStore = AvroProtocolDefinition.KAFKA_MESSAGE_ENVELOPE.getSystemStoreName();
         ClientConfig clientConfigForKafkaMessageEnvelopeSchemaReader =
-            ClientConfig.defaultGenericClientConfig(kafkaMessageEnvelopSchemaSysStore);
+            ClientConfig.defaultGenericClientConfig(kafkaMessageEnvelopSchemaSysStore)
+                .setAuthenticationProvider(authenticationProvider);
         clientConfigForKafkaMessageEnvelopeSchemaReader.setVeniceURL(routerUrl.get());
 
         SchemaReader kafkaMessageEnvelopeSchemaReader =
@@ -451,9 +453,9 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
       }
 
       if (sslFactory.isPresent()) {
-        transportClient = new HttpsTransportClient(discoveryUrl.get(), sslFactory.get(), token);
+        transportClient = new HttpsTransportClient(discoveryUrl.get(), sslFactory.get(), authenticationProvider);
       } else {
-        transportClient = new HttpTransportClient(discoveryUrl.get(), token);
+        transportClient = new HttpTransportClient(discoveryUrl.get(), authenticationProvider);
       }
     } else {
       this.primaryControllerColoD2Client = getStartedD2Client(primaryControllerColoD2ZKHost);
@@ -484,7 +486,8 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
                 kafkaMessageEnvelopSchemaSysStore),
             2);
         ClientConfig clientConfigForKafkaMessageEnvelopeSchemaReader =
-            ClientConfig.defaultGenericClientConfig(kafkaMessageEnvelopSchemaSysStore).setToken(token);
+            ClientConfig.defaultGenericClientConfig(kafkaMessageEnvelopSchemaSysStore)
+                .setAuthenticationProvider(authenticationProvider);
         clientConfigForKafkaMessageEnvelopeSchemaReader.setD2ServiceName(sysStoreDiscoveryResponse.getD2Service());
         clientConfigForKafkaMessageEnvelopeSchemaReader.setD2Client(childColoD2Client);
         SchemaReader kafkaMessageEnvelopeSchemaReader =
@@ -499,8 +502,8 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
           clusterName,
           primaryControllerColoD2Client,
           sslFactory);
-      transportClient = new D2TransportClient(discoveryResponse.getD2Service(), childColoD2Client);
-      // TODO: token ?
+      transportClient =
+          new D2TransportClient(discoveryResponse.getD2Service(), childColoD2Client, authenticationProvider);
     }
 
     // Request all the necessary info from Venice Controller
