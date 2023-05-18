@@ -226,7 +226,12 @@ task generateGHCI() {
   append(targetFilePath, "# To regenerate, run:\n#\n#     ./gradlew generateGHCI\n\n")
 
   append(targetFilePath, "name: VeniceCI\n\n")
-  append(targetFilePath, "on: [push, pull_request, workflow_dispatch]\n\n")
+  append(targetFilePath, "on:\n\n")
+  append(targetFilePath, "  push:\n\n")
+  append(targetFilePath, "    branches:\n\n")
+  append(targetFilePath, "     - main_ds\n\n")
+  append(targetFilePath, "  pull_request:\n\n")
+  append(targetFilePath, "  workflow_dispatch:\n\n")
   append(targetFilePath, "jobs:\n")
 
   def jobs = []
