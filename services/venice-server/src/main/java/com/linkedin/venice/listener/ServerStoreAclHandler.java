@@ -14,6 +14,7 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.util.Attribute;
 import io.netty.util.ReferenceCountUtil;
 import java.security.cert.X509Certificate;
+import java.util.Optional;
 import javax.net.ssl.SSLPeerUnverifiedException;
 
 

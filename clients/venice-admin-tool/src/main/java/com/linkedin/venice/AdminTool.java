@@ -2407,8 +2407,9 @@ public class AdminTool {
     if (storeName.isEmpty()) {
       throw new VeniceException("Please either provide a valid topic name.");
     }
+    String token = getOptionalArgument(cmd, Arg.TOKEN);
     D2ServiceDiscoveryResponse clusterDiscovery =
-        ControllerClient.discoverCluster(veniceControllerUrls, storeName, sslFactory, 3);
+        ControllerClient.discoverCluster(veniceControllerUrls, storeName, sslFactory, 3, token);
     String clusterName = clusterDiscovery.getCluster();
     try (ControllerClient tmpControllerClient = new ControllerClient(clusterName, veniceControllerUrls, sslFactory)) {
       PubSubTopicConfigResponse response = tmpControllerClient.getKafkaTopicConfigs(kafkaTopicName);
