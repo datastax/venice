@@ -38,6 +38,8 @@ public class HttpClient5StorageNodeClient implements StorageNodeClient {
   private final Random random = new Random();
   private final List<CloseableHttpAsyncClient> clientList = new ArrayList<>();
 
+  private String token;
+
   public HttpClient5StorageNodeClient(Optional<SSLFactory> sslFactory, VeniceRouterConfig routerConfig) {
     sslFactory.orElseThrow(
         () -> new VeniceException("Param 'sslFactory' must be present while using " + this.getClass().getSimpleName()));
@@ -64,6 +66,7 @@ public class HttpClient5StorageNodeClient implements StorageNodeClient {
         "Constructing HttpClient5StorageNodeClient with pool size: {}, total io thread count: {}",
         poolSize,
         totalIOThreadCount);
+    token = routerConfig.getToken();
   }
 
   @Override
@@ -92,6 +95,9 @@ public class HttpClient5StorageNodeClient implements StorageNodeClient {
     byte[] body = path.getBody();
     if (body != null) {
       simpleRequestBuilder.setBody(body, ContentType.DEFAULT_BINARY);
+    }
+    if (token != null && !token.isEmpty()) {
+      simpleRequestBuilder.addHeader("Authorization", "Bearer " + token);
     }
 
     getRandomClient().execute(simpleRequestBuilder.build(), new FutureCallback<SimpleHttpResponse>() {
