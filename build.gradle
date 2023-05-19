@@ -94,6 +94,7 @@ ext.libraries = [
     netty: 'io.netty:netty-all:4.1.52.Final',
     oss: 'org.sonatype.oss:oss-parent:7',
     pulsarClient: "${pulsarGroup}:pulsar-client:${pulsarVersion}",
+    pulsarAdmin: "${pulsarGroup}:pulsar-client-admin:${pulsarVersion}",
     pulsarIoCore: "${pulsarGroup}:pulsar-io-core:${pulsarVersion}",
     pulsarIoCommon: "${pulsarGroup}:pulsar-io-common:${pulsarVersion}",
     r2: 'com.linkedin.pegasus:r2:' + pegasusVersion,

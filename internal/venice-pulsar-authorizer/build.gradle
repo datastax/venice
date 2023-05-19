@@ -1,0 +1,9 @@
+dependencies {
+  implementation project(':internal:venice-common')
+  implementation libraries.pulsarAdmin;
+  api libraries.log4j2api
+}
+
+ext {
+  jacocoCoverageThreshold = 0;
+}

@@ -19,6 +19,7 @@ dependencies {
   implementation project(':services:venice-server')
   implementation project(':services:venice-router')
   implementation project(path: ':internal:venice-common')
+  implementation project(path: ':internal:venice-pulsar-authorizer')
 }
 
 jar {
