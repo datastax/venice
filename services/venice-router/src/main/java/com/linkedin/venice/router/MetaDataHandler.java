@@ -605,10 +605,10 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
      * 2. ACTIVE_ACTIVE
      */
     DataReplicationPolicy dataReplicationPolicy = hybridStoreConfig.getDataReplicationPolicy();
-    if (!dataReplicationPolicy.equals(NON_AGGREGATE) && !dataReplicationPolicy.equals(ACTIVE_ACTIVE)) {
+    /*if (!dataReplicationPolicy.equals(NON_AGGREGATE) && !dataReplicationPolicy.equals(ACTIVE_ACTIVE)) {
       setupResponseAndFlush(BAD_REQUEST, REQUEST_TOPIC_ERROR_UNSUPPORTED_REPLICATION_POLICY.getBytes(), false, ctx);
       return;
-    }
+    }*/
 
     // Retrieve partitioner config from the store
     PartitionerConfig storePartitionerConfig = store.getPartitionerConfig();
