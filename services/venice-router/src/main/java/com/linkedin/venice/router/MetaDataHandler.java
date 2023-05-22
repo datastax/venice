@@ -37,8 +37,6 @@ import com.linkedin.venice.exceptions.VeniceNoHelixResourceException;
 import com.linkedin.venice.helix.HelixHybridStoreQuotaRepository;
 import com.linkedin.venice.helix.StoreJSONSerializer;
 import com.linkedin.venice.helix.SystemStoreJSONSerializer;
-import com.linkedin.venice.meta.DataReplicationPolicy;
-import com.linkedin.venice.meta.HybridStoreConfig;
 import com.linkedin.venice.meta.PartitionerConfig;
 import com.linkedin.venice.meta.ReadOnlySchemaRepository;
 import com.linkedin.venice.meta.ReadOnlyStoreConfigRepository;
@@ -587,8 +585,9 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
       return;
     }
 
-    final HybridStoreConfig hybridStoreConfig;
     Version currentVersion = currentVersionOptional.get();
+    /*
+    final HybridStoreConfig hybridStoreConfig;
     if (currentVersion.isUseVersionLevelHybridConfig()) {
       if (currentVersion.getHybridStoreConfig() == null) {
         setupResponseAndFlush(BAD_REQUEST, REQUEST_TOPIC_ERROR_CURRENT_VERSION_NOT_HYBRID.getBytes(), false, ctx);
@@ -597,15 +596,15 @@ public class MetaDataHandler extends SimpleChannelInboundHandler<HttpRequest> {
       hybridStoreConfig = currentVersion.getHybridStoreConfig();
     } else {
       hybridStoreConfig = store.getHybridStoreConfig();
-    }
+    }*/
 
     /**
      * Only allow router request_topic for hybrid stores that have data replication policy:
      * 1. NON_AGGREGATE
      * 2. ACTIVE_ACTIVE
      */
-    DataReplicationPolicy dataReplicationPolicy = hybridStoreConfig.getDataReplicationPolicy();
-    /*if (!dataReplicationPolicy.equals(NON_AGGREGATE) && !dataReplicationPolicy.equals(ACTIVE_ACTIVE)) {
+    /*DataReplicationPolicy dataReplicationPolicy = hybridStoreConfig.getDataReplicationPolicy();
+    if (!dataReplicationPolicy.equals(NON_AGGREGATE) && !dataReplicationPolicy.equals(ACTIVE_ACTIVE)) {
       setupResponseAndFlush(BAD_REQUEST, REQUEST_TOPIC_ERROR_UNSUPPORTED_REPLICATION_POLICY.getBytes(), false, ctx);
       return;
     }*/
