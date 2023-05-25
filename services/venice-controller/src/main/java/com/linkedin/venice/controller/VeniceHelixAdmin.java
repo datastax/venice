@@ -3988,8 +3988,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
 
     Store originalStore = getStore(clusterName, storeName);
     if (originalStore == null) {
-      throw new VeniceException(
-          "The store '" + storeName + "' in cluster '" + clusterName + "' does not exist, and thus cannot be updated.");
+      throw new VeniceNoStoreException(storeName, clusterName);
     }
     if (originalStore.isHybrid()) {
       // If this is a hybrid store, always try to disable compaction if RT topic exists.
@@ -6366,8 +6365,9 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
     StoreConfig config = storeConfigRepo.getStoreConfigOrThrow(storeName);
     if (config == null || StringUtils.isEmpty(config.getCluster())) {
       throw new VeniceNoStoreException(
-          "Could not find the given store: " + storeName
-              + ". Make sure the store is created and the provided store name is correct");
+          storeName,
+          null,
+          "Make sure the store is created and the provided store name is correct");
     }
     String clusterName = config.getCluster();
     String d2Service = multiClusterConfigs.getClusterToD2Map().get(clusterName);
@@ -6657,9 +6657,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
        */
       Store originalStore = getStore(clusterName, storeName.get());
       if (originalStore == null) {
-        throw new VeniceException(
-            "The store '" + storeName.get() + "' in cluster '" + clusterName
-                + "' does not exist, and thus cannot be updated.");
+        throw new VeniceNoStoreException(storeName.get(), clusterName);
       }
       boolean shouldUpdateNativeReplication = false;
       switch (storeType) {
@@ -6784,9 +6782,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
        */
       Store originalStore = getStore(clusterName, storeName.get());
       if (originalStore == null) {
-        throw new VeniceException(
-            "The store '" + storeName.get() + "' in cluster '" + clusterName
-                + "' does not exist, and thus cannot be updated.");
+        throw new VeniceNoStoreException(storeName.get(), clusterName);
       }
       boolean shouldUpdateActiveActiveReplication = false;
       switch (storeType) {

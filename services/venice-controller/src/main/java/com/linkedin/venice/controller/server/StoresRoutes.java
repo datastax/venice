@@ -362,11 +362,13 @@ public class StoresRoutes extends AbstractRoute {
           veniceResponse.setError(
               "Store " + storeName + " belongs to cluster " + clusterDiscovered
                   + ", which is different from the given src cluster name " + srcClusterName);
+          veniceResponse.setErrorType(ErrorType.BAD_REQUEST);
           return;
         }
         // Store should not belong to dest cluster already
         if (clusterDiscovered.equals(destClusterName)) {
           veniceResponse.setError("Store " + storeName + " already belongs to cluster " + destClusterName);
+          veniceResponse.setErrorType(ErrorType.BAD_REQUEST);
           return;
         }
 
@@ -401,11 +403,13 @@ public class StoresRoutes extends AbstractRoute {
           veniceResponse.setError(
               "Store " + storeName + " belongs to cluster " + clusterDiscovered
                   + ", which is different from the given src cluster name " + srcClusterName);
+          veniceResponse.setErrorType(ErrorType.BAD_REQUEST);
           return;
         }
         // Store should not belong to dest cluster already
         if (clusterDiscovered.equals(destClusterName)) {
           veniceResponse.setError("Store " + storeName + " already belongs to cluster " + destClusterName);
+          veniceResponse.setErrorType(ErrorType.BAD_REQUEST);
           return;
         }
 
@@ -508,7 +512,8 @@ public class StoresRoutes extends AbstractRoute {
         } catch (Exception e) {
           veniceResponse.setError(
               "Failed when updating store " + storeName + ". Exception type: " + e.getClass().toString()
-                  + ". Detailed message = " + e.getMessage());
+                  + ". Detailed message = " + e.getMessage(),
+              e);
         }
       }
     };
@@ -524,6 +529,7 @@ public class StoresRoutes extends AbstractRoute {
         // Only admin users are allowed to update owners; regular user can do it through Nuage
         if (!isAllowListUser(request)) {
           veniceResponse.setError("ACL failed for request " + request.url());
+          veniceResponse.setErrorType(ErrorType.BAD_REQUEST);
           return;
         }
         AdminSparkServer.validateParams(request, SET_OWNER.getParams(), admin);
@@ -544,6 +550,7 @@ public class StoresRoutes extends AbstractRoute {
       @Override
       public void internalHandle(Request request, PartitionResponse veniceResponse) {
         veniceResponse.setError("This operation is no longer supported, please use the update store endpoint");
+        veniceResponse.setErrorType(ErrorType.BAD_REQUEST);
       }
     };
   }
@@ -783,6 +790,7 @@ public class StoresRoutes extends AbstractRoute {
       public void internalHandle(Request request, StoreResponse veniceResponse) {
         if (!isAllowListUser(request)) {
           veniceResponse.setError("Access Denied!! Only admins can change topic compaction policy!");
+          veniceResponse.setErrorType(ErrorType.BAD_REQUEST);
           return;
         }
         AdminSparkServer.validateParams(request, SET_TOPIC_COMPACTION.getParams(), admin);
@@ -824,12 +832,12 @@ public class StoresRoutes extends AbstractRoute {
                 .extractVersionTopicsToCleanup(admin, topicsWithRetention, minNumberOfUnusedKafkaTopicsToPreserve, 0);
             if (!deletableTopicsForThisStore.isEmpty()) {
               deletableTopicsList
-                  .addAll(deletableTopicsForThisStore.stream().map(t -> t.getName()).collect(Collectors.toList()));
+                  .addAll(deletableTopicsForThisStore.stream().map(PubSubTopic::getName).collect(Collectors.toList()));
             }
           });
           veniceResponse.setTopics(deletableTopicsList);
         } catch (Exception e) {
-          veniceResponse.setError("Failed to list deletable store topics. Message: " + e.getMessage());
+          veniceResponse.setError("Failed to list deletable store topics.", e);
         }
       }
     };
@@ -855,7 +863,7 @@ public class StoresRoutes extends AbstractRoute {
           veniceResponse.setSchemaDiff(info.getSchemaDiff());
           veniceResponse.setVersionStateDiff(info.getVersionStateDiff());
         } catch (Exception e) {
-          veniceResponse.setError("Failed to compare store. Message: " + e.getMessage());
+          veniceResponse.setError("Failed to compare store.", e);
         }
       }
     };

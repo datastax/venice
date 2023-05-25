@@ -16,6 +16,7 @@ import com.linkedin.venice.client.store.transport.HttpTransportClient;
 import com.linkedin.venice.client.store.transport.HttpsTransportClient;
 import com.linkedin.venice.client.store.transport.TransportClient;
 import com.linkedin.venice.controllerapi.ControllerClient;
+import com.linkedin.venice.controllerapi.ControllerClientFactory;
 import com.linkedin.venice.controllerapi.ControllerResponse;
 import com.linkedin.venice.controllerapi.D2ControllerClient;
 import com.linkedin.venice.controllerapi.D2ServiceDiscoveryResponse;
@@ -427,7 +428,7 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
 
     final TransportClient transportClient;
     if (discoveryUrl.isPresent()) {
-      this.controllerClient = ControllerClient
+      this.controllerClient = ControllerClientFactory
           .discoverAndConstructControllerClient(storeName, discoveryUrl.get(), sslFactory, 1, authenticationProvider);
 
       /**
