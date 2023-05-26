@@ -23,6 +23,7 @@ import static com.linkedin.venice.meta.VersionStatus.PUSHED;
 import static com.linkedin.venice.meta.VersionStatus.STARTED;
 import static com.linkedin.venice.pushmonitor.OfflinePushStatus.HELIX_ASSIGNMENT_COMPLETED;
 import static com.linkedin.venice.utils.AvroSchemaUtils.isValidAvroSchema;
+import static com.linkedin.venice.utils.RegionUtils.parseRegionsFilterList;
 import static com.linkedin.venice.views.ViewUtils.ETERNAL_TOPIC_RETENTION_ENABLED;
 import static com.linkedin.venice.views.ViewUtils.LOG_COMPACTION_ENABLED;
 import static com.linkedin.venice.views.ViewUtils.SUB_PARTITION_COUNT;
@@ -196,6 +197,7 @@ import com.linkedin.venice.utils.KafkaSSLUtils;
 import com.linkedin.venice.utils.LatencyUtils;
 import com.linkedin.venice.utils.Pair;
 import com.linkedin.venice.utils.PartitionUtils;
+import com.linkedin.venice.utils.RegionUtils;
 import com.linkedin.venice.utils.SslUtils;
 import com.linkedin.venice.utils.Time;
 import com.linkedin.venice.utils.Utils;
@@ -295,7 +297,6 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
 
   private static final Logger LOGGER = LogManager.getLogger(VeniceHelixAdmin.class);
   private static final int RECORD_COUNT = 10;
-  private static final String REGION_FILTER_LIST_SEPARATOR = ",\\s*";
 
   private final VeniceControllerMultiClusterConfig multiClusterConfigs;
   private final String controllerClusterName;
@@ -1893,6 +1894,43 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
     }
   }
 
+  public Pair<Boolean, Version> addVersionAndTopicOnly(
+      String clusterName,
+      String storeName,
+      String pushJobId,
+      int versionNumber,
+      int numberOfPartitions,
+      int replicationFactor,
+      boolean sendStartOfPush,
+      boolean sorted,
+      PushType pushType,
+      String compressionDictionary,
+      String remoteKafkaBootstrapServers,
+      Optional<String> sourceGridFabric,
+      long rewindTimeInSecondsOverride,
+      int replicationMetadataVersionId,
+      Optional<String> emergencySourceRegion,
+      boolean versionSwapDeferred) {
+    return addVersionAndTopicOnly(
+        clusterName,
+        storeName,
+        pushJobId,
+        versionNumber,
+        numberOfPartitions,
+        replicationFactor,
+        sendStartOfPush,
+        sorted,
+        pushType,
+        compressionDictionary,
+        remoteKafkaBootstrapServers,
+        sourceGridFabric,
+        rewindTimeInSecondsOverride,
+        replicationMetadataVersionId,
+        emergencySourceRegion,
+        versionSwapDeferred,
+        null);
+  }
+
   /**
    * A wrapper to invoke VeniceHelixAdmin#addVersion to only increment the version and create the topic(s) needed
    * without starting ingestion.
@@ -1913,7 +1951,8 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
       long rewindTimeInSecondsOverride,
       int replicationMetadataVersionId,
       Optional<String> emergencySourceRegion,
-      boolean versionSwapDeferred) {
+      boolean versionSwapDeferred,
+      String targetedRegions) {
     return addVersion(
         clusterName,
         storeName,
@@ -1932,7 +1971,8 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
         rewindTimeInSecondsOverride,
         replicationMetadataVersionId,
         emergencySourceRegion,
-        versionSwapDeferred);
+        versionSwapDeferred,
+        targetedRegions);
   }
 
   /**
@@ -2214,6 +2254,47 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
             useFastKafkaOperationTimeout));
   }
 
+  private Pair<Boolean, Version> addVersion(
+      String clusterName,
+      String storeName,
+      String pushJobId,
+      int versionNumber,
+      int numberOfPartitions,
+      int replicationFactor,
+      boolean startIngestion,
+      boolean sendStartOfPush,
+      boolean sorted,
+      boolean useFastKafkaOperationTimeout,
+      Version.PushType pushType,
+      String compressionDictionary,
+      String remoteKafkaBootstrapServers,
+      Optional<String> sourceGridFabric,
+      long rewindTimeInSecondsOverride,
+      int replicationMetadataVersionId,
+      Optional<String> emergencySourceRegion,
+      boolean versionSwapDeferred) {
+    return addVersion(
+        clusterName,
+        storeName,
+        pushJobId,
+        versionNumber,
+        numberOfPartitions,
+        replicationFactor,
+        startIngestion,
+        sendStartOfPush,
+        sorted,
+        useFastKafkaOperationTimeout,
+        pushType,
+        compressionDictionary,
+        remoteKafkaBootstrapServers,
+        sourceGridFabric,
+        rewindTimeInSecondsOverride,
+        replicationMetadataVersionId,
+        emergencySourceRegion,
+        versionSwapDeferred,
+        null);
+  }
+
   /**
    * Note, versionNumber may be VERSION_ID_UNSET, which must be accounted for.
    * Add version is a multi step process that can be broken down to three main steps:
@@ -2241,7 +2322,8 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
       long rewindTimeInSecondsOverride,
       int replicationMetadataVersionId,
       Optional<String> emergencySourceRegion,
-      boolean versionSwapDeferred) {
+      boolean versionSwapDeferred,
+      String targetedRegions) {
     if (isClusterInMaintenanceMode(clusterName)) {
       throw new HelixClusterMaintenanceModeException(clusterName);
     }
@@ -2359,18 +2441,14 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
               version.setPushStreamSourceAddress(remoteKafkaBootstrapServers);
             } else {
               /**
-               * AddVersion is invoked by directly querying controllers; there are 3 different configs that
-               * can determine where the source fabric is:
-               * 1. Cluster level config
-               * 2. Push job config which can identify where the push starts from, which has a higher
-               *    priority than cluster level config
-               * 3. Store level config
-               * 4. Emergency source fabric config in parent controller config, which has the highest priority;
-               *    By default, it's not used unless specified. It has the highest priority because it can be used to fail
-               *    over a push.
+               * AddVersion is invoked by directly querying controllers
                */
-              String sourceFabric =
-                  getNativeReplicationSourceFabric(clusterName, store, sourceGridFabric, emergencySourceRegion);
+              String sourceFabric = getNativeReplicationSourceFabric(
+                  clusterName,
+                  store,
+                  sourceGridFabric,
+                  emergencySourceRegion,
+                  targetedRegions);
               sourceKafkaBootstrapServers = getNativeReplicationKafkaBootstrapServerAddress(sourceFabric);
               if (sourceKafkaBootstrapServers == null) {
                 sourceKafkaBootstrapServers = getKafkaBootstrapServers(isSslToKafka());
@@ -2629,7 +2707,15 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
       Optional<X509Certificate> requesterCert,
       long rewindTimeInSecondsOverride,
       Optional<String> emergencySourceRegion,
-      boolean versionSwapDeferred) {
+      boolean versionSwapDeferred,
+      String targetedRegions) {
+    if (StringUtils.isNotEmpty(targetedRegions)) {
+      /**
+       * only parent controller should handle this request. See {@link VeniceParentHelixAdmin#incrementVersionIdempotent}
+       */
+      throw new VeniceException(
+          "Request of creating versions/topics for targeted region push should only be sent to parent controller");
+    }
     checkControllerLeadershipFor(clusterName);
     VeniceControllerClusterConfig clusterConfig = getHelixVeniceClusterResources(clusterName).getConfig();
     int replicationMetadataVersionId = clusterConfig.getReplicationMetadataVersion();
@@ -4505,16 +4591,6 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
   }
 
   /**
-   * A helper function to split a region list with {@link VeniceHelixAdmin#REGION_FILTER_LIST_SEPARATOR}
-   */
-  protected static Set<String> parseRegionsFilterList(String regionsFilterList) {
-    Set<String> fabrics = new HashSet<>();
-    String[] tokens = regionsFilterList.trim().toLowerCase().split(REGION_FILTER_LIST_SEPARATOR);
-    Collections.addAll(fabrics, tokens);
-    return fabrics;
-  }
-
-  /**
    * Update the store metadata by applying provided operation.
    * @param clusterName name of the cluster.
    * @param storeName name of the to be updated store.
@@ -5231,18 +5307,19 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
    */
   @Override
   public OfflinePushStatusInfo getOffLinePushStatus(String clusterName, String kafkaTopic) {
-    return getOffLinePushStatus(clusterName, kafkaTopic, Optional.empty(), null);
+    return getOffLinePushStatus(clusterName, kafkaTopic, Optional.empty(), null, null);
   }
 
   /**
-   * @see Admin#getOffLinePushStatus(String, String, Optional, String)
+   * @see Admin#getOffLinePushStatus(String, String, Optional, String, String).
    */
   @Override
   public OfflinePushStatusInfo getOffLinePushStatus(
       String clusterName,
       String kafkaTopic,
       Optional<String> incrementalPushVersion,
-      String region) {
+      String region,
+      String targetedRegions) {
     checkControllerLeadershipFor(clusterName);
     if (region != null) {
       checkCurrentFabricMatchesExpectedFabric(region);
@@ -5595,6 +5672,12 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
   }
 
   /**
+   * Source fabric selection priority:
+   * 1. Parent controller emergency source fabric config.
+   * 2. VPJ plugin targeted region config, however it will compute all selections based on the criteria below to select the source region.
+   * 3. VPJ plugin source grid fabric config.
+   * 4. Store level source fabric config.
+   * 5. Cluster level source fabric config.
    * @return the selected source fabric for a given store.
    */
   @Override
@@ -5602,29 +5685,54 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
       String clusterName,
       Store store,
       Optional<String> sourceGridFabric,
-      Optional<String> emergencySourceRegion) {
-    /**
-     * Source fabric selection priority:
-     * 1. Parent controller emergency source fabric config.
-     * 2. VPJ plugin source grid fabric config.
-     * 3. Store level source fabric config.
-     * 4. Cluster level source fabric config.
-     */
+      Optional<String> emergencySourceRegion,
+      String targetedRegions) {
     String sourceFabric = emergencySourceRegion.orElse(null);
 
-    if (sourceGridFabric.isPresent() && (sourceFabric == null || sourceFabric.isEmpty())) {
-      sourceFabric = sourceGridFabric.get();
+    // always respect emergency region so return directly if it is not empty
+    if (StringUtils.isNotEmpty(sourceFabric)) {
+      return sourceFabric;
     }
 
-    if (sourceFabric == null || sourceFabric.isEmpty()) {
-      sourceFabric = store.getNativeReplicationSourceFabric();
+    Set<String> regions = targetedRegions != null ? RegionUtils.parseRegionsFilterList(targetedRegions) : null;
+
+    if (sourceGridFabric.isPresent()) {
+      sourceFabric = getPreferredRegion(sourceGridFabric.get(), regions);
     }
 
-    if (sourceFabric == null || sourceFabric.isEmpty()) {
-      sourceFabric = multiClusterConfigs.getControllerConfig(clusterName).getNativeReplicationSourceFabric();
+    if (StringUtils.isEmpty(sourceFabric)) {
+      sourceFabric = getPreferredRegion(store.getNativeReplicationSourceFabric(), regions);
     }
 
+    if (StringUtils.isEmpty(sourceFabric)) {
+      sourceFabric = getPreferredRegion(
+          getMultiClusterConfigs().getControllerConfig(clusterName).getNativeReplicationSourceFabric(),
+          regions);
+    }
+
+    if (StringUtils.isEmpty(sourceFabric) && regions != null) {
+      String selection = regions.iterator().next();
+      LOGGER.warn(
+          "User specified targeted regions: {} for store {} but default source fabric selection is not in the list. Use {} from the list instead",
+          targetedRegions,
+          store.getName(),
+          selection);
+      sourceFabric = selection;
+    }
     return sourceFabric;
+  }
+
+  /**
+   * Select the preferred regions from the given set if the set is provided.
+   * @param candidate
+   * @param regions
+   * @return
+   */
+  private String getPreferredRegion(String candidate, Set<String> regions) {
+    if (regions == null || regions.contains(candidate)) {
+      return candidate;
+    }
+    return null;
   }
 
   /**
@@ -7644,5 +7752,10 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
   @Override
   public Optional<PushStatusStoreReader> getPushStatusStoreReader() {
     return pushStatusStoreReader;
+  }
+
+  // Visible for testing
+  VeniceControllerMultiClusterConfig getMultiClusterConfigs() {
+    return multiClusterConfigs;
   }
 }
