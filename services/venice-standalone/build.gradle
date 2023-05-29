@@ -35,6 +35,15 @@ run {
   args = ["${project.projectDir}/config"]
 }
 
+task generateSslCertificate(type: Exec) {
+  def source = file('./../../internal/venice-common/create-ssl-cert.sh')
+  def outputDir = file("$buildDir/generated/resources")
+  inputs.file(source)
+  outputs.dir(outputDir)
+  commandLine = [source, outputDir]
+}
+sourceSets.main.resources.srcDir(generateSslCertificate)
+
 ext {
   jacocoCoverageThreshold = 0.0
 }
