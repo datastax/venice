@@ -96,6 +96,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.mapred.AvroInputFormat;
@@ -560,6 +561,7 @@ public class VenicePushJob implements AutoCloseable {
     long storeRewindTimeInSeconds;
     Schema keySchema;
     HybridStoreConfig hybridStoreConfig;
+    StoreResponse storeResponse;
   }
 
   protected StoreSetting storeSetting;
@@ -2303,6 +2305,7 @@ public class VenicePushJob implements AutoCloseable {
     if (storeResponse.isError()) {
       throw new VeniceException("Can't get store info. " + storeResponse.getError());
     }
+    storeSetting.storeResponse = storeResponse;
     storeSetting.storeStorageQuota = storeResponse.getStore().getStorageQuotaInByte();
     storeSetting.isSchemaAutoRegisterFromPushJobEnabled =
         storeResponse.getStore().isSchemaAutoRegisterFromPushJobEnabled();
@@ -2599,7 +2602,7 @@ public class VenicePushJob implements AutoCloseable {
    * If any datacenter report an explicit error status, we throw an exception and fail the job. However, datacenters
    * with COMPLETED status will be serving new data.
    */
-  private void pollStatusUntilComplete(
+  void pollStatusUntilComplete(
       Optional<String> incrementalPushVersion,
       ControllerClient controllerClient,
       PushJobSetting pushJobSetting,
@@ -2620,6 +2623,7 @@ public class VenicePushJob implements AutoCloseable {
      * no more than {@link DEFAULT_JOB_STATUS_IN_UNKNOWN_STATE_TIMEOUT_MS}.
      */
     long unknownStateStartTimeMs = 0;
+    long pollStartTimeMs = System.currentTimeMillis();
 
     String topicToMonitor = getTopicToMonitor(topicInfo, pushJobSetting);
 
@@ -2680,7 +2684,13 @@ public class VenicePushJob implements AutoCloseable {
         LOGGER.info("Successfully pushed {}", topicInfo.topic);
         return;
       }
-
+      long bootstrapToOnlineTimeoutInHours = storeSetting.storeResponse.getStore().getBootstrapToOnlineTimeoutInHours();
+      long durationMs = System.currentTimeMillis() - pollStartTimeMs;
+      if (durationMs > TimeUnit.HOURS.toMillis(bootstrapToOnlineTimeoutInHours)) {
+        throw new VeniceException(
+            "Failing push-job for store " + storeSetting.storeResponse.getName() + " which is still running after "
+                + TimeUnit.MILLISECONDS.toHours(durationMs) + " hours.");
+      }
       if (!overallStatus.equals(ExecutionStatus.UNKNOWN)) {
         unknownStateStartTimeMs = 0;
       } else if (unknownStateStartTimeMs == 0) {
