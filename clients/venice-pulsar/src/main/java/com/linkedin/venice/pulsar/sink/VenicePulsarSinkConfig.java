@@ -20,6 +20,7 @@ package com.linkedin.venice.pulsar.sink;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -62,6 +63,9 @@ public class VenicePulsarSinkConfig implements Serializable {
 
   @FieldDoc(defaultValue = "10", help = "Max number of buffered records before flushing to Venice")
   private int maxNumberUnflushedRecords = 10;
+
+  @FieldDoc(defaultValue = "", help = "Additional configuration for the Venice writer")
+  private Map<String, String> writerConfig = new HashMap<>();
 
   public static VenicePulsarSinkConfig load(Map<String, Object> map, SinkContext sinkContext) throws IOException {
     LOGGER.info("Loading config {}", map);
@@ -115,6 +119,11 @@ public class VenicePulsarSinkConfig implements Serializable {
 
   public String getVeniceToken() {
     return veniceToken;
+  }
+
+  @java.lang.SuppressWarnings("all")
+  public Map<String, String> getWriterConfig() {
+    return writerConfig;
   }
 
   /**
@@ -194,6 +203,11 @@ public class VenicePulsarSinkConfig implements Serializable {
     return this;
   }
 
+  @java.lang.SuppressWarnings("all")
+  public void setWriterConfig(Map<String, String> writerConfig) {
+    this.writerConfig = writerConfig;
+  }
+
   @java.lang.Override
   @java.lang.SuppressWarnings("all")
   public boolean equals(final java.lang.Object o) {
@@ -223,6 +237,10 @@ public class VenicePulsarSinkConfig implements Serializable {
     if (this$veniceRouterUrl == null
         ? other$veniceRouterUrl != null
         : !this$veniceRouterUrl.equals(other$veniceRouterUrl))
+      return false;
+    final java.lang.Object this$writerConfig = this.getWriterConfig();
+    final java.lang.Object other$writerConfig = other.getWriterConfig();
+    if (this$writerConfig == null ? other$writerConfig != null : !this$writerConfig.equals(other$writerConfig))
       return false;
     final java.lang.Object this$kafkaSaslConfig = this.getKafkaSaslConfig();
     final java.lang.Object other$kafkaSaslConfig = other.getKafkaSaslConfig();
@@ -276,6 +294,8 @@ public class VenicePulsarSinkConfig implements Serializable {
     result = result * PRIME + ($kafkaSecurityProtocol == null ? 43 : $kafkaSecurityProtocol.hashCode());
     final java.lang.Object $storeName = this.getStoreName();
     result = result * PRIME + ($storeName == null ? 43 : $storeName.hashCode());
+    final java.lang.Object $writerConfig = this.getWriterConfig();
+    result = result * PRIME + ($writerConfig == null ? 43 : $writerConfig.hashCode());
     return result;
   }
 
