@@ -19,6 +19,10 @@ import com.linkedin.venice.controller.server.AdminSparkServer;
 import com.linkedin.venice.controller.supersetschema.SupersetSchemaGenerator;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.pubsub.PubSubTopicRepository;
+import com.linkedin.venice.pubsub.adapter.kafka.admin.ApacheKafkaAdminAdapterFactory;
+import com.linkedin.venice.pubsub.adapter.kafka.consumer.ApacheKafkaConsumerAdapterFactory;
+import com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdapterFactory;
+import com.linkedin.venice.pubsub.api.PubSubClientsFactory;
 import com.linkedin.venice.serialization.avro.AvroProtocolDefinition;
 import com.linkedin.venice.service.AbstractVeniceService;
 import com.linkedin.venice.service.ICProvider;
@@ -31,6 +35,7 @@ import io.tehuti.metrics.MetricsRepository;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -61,7 +66,6 @@ public class VeniceController {
   private final Optional<ClientConfig> routerClientConfig;
   private final Optional<ICProvider> icProvider;
   private final Optional<SupersetSchemaGenerator> externalSupersetSchemaGenerator;
-  private static final String CONTROLLER_SERVICE_NAME = "venice-controller";
   private final PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
 
   /**
@@ -108,6 +112,9 @@ public class VeniceController {
         Optional.empty());
   }
 
+  private final PubSubClientsFactory pubSubClientsFactory;
+  static final String CONTROLLER_SERVICE_NAME = "venice-controller";
+
   /**
    * Allocates a new {@code VeniceController} object.
    *
@@ -126,8 +133,11 @@ public class VeniceController {
    * @param routerClientConfig
    *        an optional {@link ClientConfig} used for reading schema from routers.
    * @param icProvider
-   *        an {@link ICProvider} used for injecting custom tracing functionality.
+   *        an optional invocation-context provider class for calls between various deployable services.
+   * @param externalSupersetSchemaGenerator
+   *        an optional {@link SupersetSchemaGenerator} used for generating superset schema.
    */
+  @Deprecated
   public VeniceController(
       List<VeniceProperties> propertiesList,
       MetricsRepository metricsRepository,
@@ -139,18 +149,39 @@ public class VeniceController {
       Optional<ClientConfig> routerClientConfig,
       Optional<ICProvider> icProvider,
       Optional<SupersetSchemaGenerator> externalSupersetSchemaGenerator) {
-    this.multiClusterConfigs = new VeniceControllerMultiClusterConfig(propertiesList);
-    this.metricsRepository = metricsRepository;
-    this.serviceDiscoveryAnnouncers = serviceDiscoveryAnnouncers;
+    this(
+        new VeniceControllerContext.Builder().setPropertiesList(propertiesList)
+            .setMetricsRepository(metricsRepository)
+            .setServiceDiscoveryAnnouncers(serviceDiscoveryAnnouncers)
+            .setAccessController(accessController.orElse(null))
+            .setAuthorizerService(authorizerService.orElse(null))
+            .setD2Client(d2Client)
+            .setRouterClientConfig(routerClientConfig.orElse(null))
+            .setIcProvider(icProvider.orElse(null))
+            .setExternalSupersetSchemaGenerator(externalSupersetSchemaGenerator.orElse(null))
+            .setPubSubClientsFactory(
+                new PubSubClientsFactory(
+                    new ApacheKafkaProducerAdapterFactory(),
+                    new ApacheKafkaConsumerAdapterFactory(),
+                    new ApacheKafkaAdminAdapterFactory()))
+            .build());
+  }
+
+  public VeniceController(VeniceControllerContext ctx) {
+    this.multiClusterConfigs = new VeniceControllerMultiClusterConfig(ctx.getPropertiesList());
+    this.metricsRepository = ctx.getMetricsRepository();
+    this.serviceDiscoveryAnnouncers = ctx.getServiceDiscoveryAnnouncers();
     Optional<SSLConfig> sslConfig = multiClusterConfigs.getSslConfig();
     this.sslEnabled = sslConfig.isPresent() && sslConfig.get().isControllerSSLEnabled();
-    this.accessController = accessController;
-    this.authenticationService = authenticationService;
-    this.authorizerService = authorizerService;
-    this.d2Client = d2Client;
-    this.routerClientConfig = routerClientConfig;
-    this.icProvider = icProvider;
-    this.externalSupersetSchemaGenerator = externalSupersetSchemaGenerator;
+    this.accessController = Optional.ofNullable(ctx.getAccessController());
+    this.authorizerService = Optional.ofNullable(ctx.getAuthorizerService());
+    this.authenticationService = Optional.ofNullable(ctx.getAuthenticationService());
+    this.d2Client = ctx.getD2Client();
+    this.routerClientConfig = Optional.ofNullable(ctx.getRouterClientConfig());
+    this.icProvider = Optional.ofNullable(ctx.getIcProvider());
+    this.externalSupersetSchemaGenerator = Optional.ofNullable(ctx.getExternalSupersetSchemaGenerator());
+    this.pubSubClientsFactory = Objects.requireNonNull(ctx.getPubSubClientsFactory(), "PubSubClientsFactory is null");
+
     createServices();
   }
 
@@ -166,7 +197,8 @@ public class VeniceController {
         routerClientConfig,
         icProvider,
         externalSupersetSchemaGenerator,
-        pubSubTopicRepository);
+        pubSubTopicRepository,
+        pubSubClientsFactory);
 
     adminServer = new AdminSparkServer(
         // no need to pass the hostname, we are binding to all the addresses
@@ -329,12 +361,20 @@ public class VeniceController {
     Optional<AuthenticationService> authenticationService = buildAuthenticationService(controllerProps);
     Optional<AuthorizerService> authorizerService = buildAuthorizerService(controllerProps);
     D2ClientUtils.startClient(d2Client);
+    PubSubClientsFactory pubSubClientsFactory = new PubSubClientsFactory(
+        new ApacheKafkaProducerAdapterFactory(),
+        new ApacheKafkaConsumerAdapterFactory(),
+        new ApacheKafkaAdminAdapterFactory());
     VeniceController controller = new VeniceController(
-        Arrays.asList(new VeniceProperties[] { controllerProps }),
-        new ArrayList<>(),
-        authenticationService,
-        authorizerService,
-        d2Client);
+        new VeniceControllerContext.Builder()
+            .setPropertiesList(Arrays.asList(new VeniceProperties[] { controllerProps }))
+            .setServiceDiscoveryAnnouncers(new ArrayList<>())
+            .setD2Client(d2Client)
+            .setAuthenticationService(authenticationService.orElse(null))
+            .setAuthorizerService(authorizerService.orElse(null))
+            .setPubSubClientsFactory(pubSubClientsFactory)
+            .build());
+
     controller.start();
     addShutdownHook(controller, d2Client);
     if (joinThread) {
