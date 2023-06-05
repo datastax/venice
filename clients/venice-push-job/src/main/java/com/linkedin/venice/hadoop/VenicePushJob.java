@@ -19,6 +19,8 @@ import static org.apache.hadoop.security.UserGroupInformation.HADOOP_TOKEN_FILE_
 
 import com.github.luben.zstd.Zstd;
 import com.linkedin.avroutil1.compatibility.AvroCompatibilityHelper;
+import com.linkedin.venice.authentication.ClientAuthenticationProvider;
+import com.linkedin.venice.authentication.ClientAuthenticationProviderFactory;
 import com.linkedin.venice.compression.CompressionStrategy;
 import com.linkedin.venice.controllerapi.ControllerClient;
 import com.linkedin.venice.controllerapi.ControllerClientFactory;
@@ -422,6 +424,7 @@ public class VenicePushJob implements AutoCloseable {
 
   // Mutable state
   private ControllerClient controllerClient;
+  private ClientAuthenticationProvider clientAuthenticationProvider;
   private ControllerClient kmeSchemaSystemStoreControllerClient;
   private ControllerClient livenessHeartbeatStoreControllerClient;
   private RunningJob runningJob;
@@ -585,6 +588,7 @@ public class VenicePushJob implements AutoCloseable {
         throw new VeniceException("Could not get user credential");
       }
     });
+    this.clientAuthenticationProvider = ClientAuthenticationProviderFactory.build(props);
     LOGGER.info("Constructing {}: {}", VenicePushJob.class.getSimpleName(), props.toString(true));
     this.pushJobSetting = getPushJobSetting(props);
     LOGGER.info("Going to use controller URL: {}  to discover cluster.", pushJobSetting.veniceControllerUrl);
@@ -1642,7 +1646,8 @@ public class VenicePushJob implements AutoCloseable {
           pushJobSetting.controllerD2ServiceName,
           controllerD2ZkHost,
           sslFactory,
-          pushJobSetting.controllerRetries);
+          pushJobSetting.controllerRetries,
+          clientAuthenticationProvider);
     } else {
       LOGGER.info("Controller client has already been initialized");
     }
@@ -1654,7 +1659,8 @@ public class VenicePushJob implements AutoCloseable {
           pushJobSetting.controllerD2ServiceName,
           controllerD2ZkHost,
           sslFactory,
-          pushJobSetting.controllerRetries);
+          pushJobSetting.controllerRetries,
+          clientAuthenticationProvider);
     } else {
       LOGGER.info("System store controller client has already been initialized");
     }
@@ -1667,7 +1673,8 @@ public class VenicePushJob implements AutoCloseable {
           pushJobSetting.controllerD2ServiceName,
           controllerD2ZkHost,
           sslFactory,
-          pushJobSetting.controllerRetries);
+          pushJobSetting.controllerRetries,
+          clientAuthenticationProvider);
     } else {
       this.livenessHeartbeatStoreControllerClient = null;
     }
@@ -1686,7 +1693,8 @@ public class VenicePushJob implements AutoCloseable {
       String controllerD2ServiceName,
       String d2ZkHosts,
       Optional<SSLFactory> sslFactory,
-      int retryAttempts) {
+      int retryAttempts,
+      ClientAuthenticationProvider authenticationProvider) {
     if (useD2ControllerClient) {
       return D2ControllerClientFactory.discoverAndConstructControllerClient(
           storeName,
@@ -1699,7 +1707,8 @@ public class VenicePushJob implements AutoCloseable {
           storeName,
           pushJobSetting.veniceControllerUrl,
           sslFactory,
-          retryAttempts);
+          retryAttempts,
+          authenticationProvider);
     }
   }
 
