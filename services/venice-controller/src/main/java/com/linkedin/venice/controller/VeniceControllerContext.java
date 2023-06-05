@@ -85,6 +85,7 @@ public class VeniceControllerContext {
     this.serviceDiscoveryAnnouncers = builder.serviceDiscoveryAnnouncers;
     this.accessController = builder.accessController;
     this.authorizerService = builder.authorizerService;
+    this.authenticationService = builder.authenticationService;
     this.d2Client = builder.d2Client;
     this.routerClientConfig = builder.routerClientConfig;
     this.icProvider = builder.icProvider;
