@@ -3608,7 +3608,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
   /**
    * Get backup version number, the largest online version number that is less than the current version number
    */
-  int getBackupVersionNumber(List<Version> versions, int currentVersion) {
+  public int getBackupVersionNumber(List<Version> versions, int currentVersion) {
     versions.sort(Comparator.comparingInt(Version::getNumber).reversed());
     for (Version v: versions) {
       if (v.getNumber() < currentVersion && VersionStatus.ONLINE.equals(v.getStatus())) {
@@ -6488,7 +6488,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
     offlinePushMonitor.startMonitorOfflinePush(kafkaTopic, numberOfPartition, replicationFactor, strategy);
   }
 
-  private void stopMonitorOfflinePush(
+  public void stopMonitorOfflinePush(
       String clusterName,
       String topic,
       boolean deletePushStatus,
@@ -7005,7 +7005,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
   public void wipeCluster(String clusterName, String fabric, Optional<String> storeName, Optional<Integer> versionNum) {
     checkControllerLeadershipFor(clusterName);
     checkCurrentFabricMatchesExpectedFabric(fabric);
-    if (!multiClusterConfigs.getControllerConfig(clusterName).isClusterWipeAllowed()) {
+    if (!isClusterWipeAllowed(clusterName)) {
       throw new VeniceException("Current fabric " + fabric + " does not allow cluster wipe");
     }
     HelixVeniceClusterResources resources = getHelixVeniceClusterResources(clusterName);
@@ -7757,6 +7757,10 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
 
   public Optional<SSLFactory> getSslFactory() {
     return sslFactory;
+  }
+
+  public boolean isClusterWipeAllowed(String clusterName) {
+    return multiClusterConfigs.getControllerConfig(clusterName).isClusterWipeAllowed();
   }
 
   // Visible for testing
