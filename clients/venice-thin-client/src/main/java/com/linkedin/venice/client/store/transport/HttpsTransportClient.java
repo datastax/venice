@@ -9,8 +9,6 @@ import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
 
 
 public class HttpsTransportClient extends HttpTransportClient {
-  private SSLFactory sslFactory;
-
   public HttpsTransportClient(
       String routerUrl,
       SSLFactory sslFactory,
@@ -19,7 +17,6 @@ public class HttpsTransportClient extends HttpTransportClient {
         routerUrl,
         HttpAsyncClients.custom().setSSLStrategy(new SSLIOSessionStrategy(sslFactory.getSSLContext())).build(),
         authenticationProvider);
-    this.sslFactory = sslFactory;
   }
 
   public HttpsTransportClient(
@@ -32,12 +29,4 @@ public class HttpsTransportClient extends HttpTransportClient {
     }
   }
 
-  /**
-   * The same {@link CloseableHttpAsyncClient} could not be used to send out another request in its own callback function.
-   * @return
-   */
-  @Override
-  public TransportClient getCopyIfNotUsableInCallback() {
-    return new HttpsTransportClient(routerUrl, sslFactory, authenticationProvider);
-  }
 }
