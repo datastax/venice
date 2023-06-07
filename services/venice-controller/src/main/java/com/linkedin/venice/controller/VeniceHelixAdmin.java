@@ -6284,8 +6284,9 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
     if (storeName == null) {
       return getLastSucceedExecutionId(clusterName);
     } else {
+      String userStoreName = VeniceSystemStoreType.extractUserStoreName(storeName);
       return adminConsumerServices.containsKey(clusterName)
-          ? adminConsumerServices.get(clusterName).getLastSucceededExecutionId(storeName)
+          ? adminConsumerServices.get(clusterName).getLastSucceededExecutionId(userStoreName)
           : null;
     }
   }
